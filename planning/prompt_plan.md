@@ -12,7 +12,7 @@ This file contains a series of LLM prompts for generating code incrementally.
 
 ```text
 # Prompt 1.1: Initialize project repository
-Generate a new git repository for a TypeScript frontend web app called "Spotify Race Playlist Visualizer". Include a README.md with the project title and short description. Ensure ES Modules compatibility. No code yet. Confirm repository is ready for adding source files.
+Generate a new git repository for a TypeScript frontend web app called "PB Jam" - it is a Spotify Race Playlist Visualizer. Include a README.md with the project title and short description. Ensure ES Modules compatibility. No code yet. Confirm repository is ready for adding source files.
 ```
 
 ```text
