@@ -17,6 +17,7 @@ export interface Split {
  */
 export interface PacePlan {
   id: string;
+  userId: string;
   raceId: string;
   title: string;
   targetTime: number; // in seconds

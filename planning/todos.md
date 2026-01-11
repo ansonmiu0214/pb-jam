@@ -68,17 +68,20 @@ This todo.md is a thorough checklist to guide your implementation of the Spotify
 
 ## Data Models & CRUD Implementation
 
-* Define TypeScript interfaces in `models/types.ts` (Prompt 4.1)
+* [x] Define TypeScript interfaces in `models/types.ts` (Prompt 4.1)
 
-  * Race, PacePlan, Split
-* Implement `raceManager.ts` basic CRUD (Prompt 4.2)
+  * [x] Race, PacePlan, Split
+* [x] Implement `raceManager.ts` basic CRUD (Prompt 4.2)
 
-  * createRace, fetchRaces, deleteRace
-  * [manual] Test creating and fetching races
-* Implement `pacePlanManager.ts` basic CRUD (Prompt 4.3)
+  * [x] createRace, fetchRaces, deleteRace
+  * [x] Include console logs for verification
+  * [x] Add test file for raceManager functions
+* [x] Implement `pacePlanManager.ts` basic CRUD (Prompt 4.3)
 
-  * createPacePlan, fetchPacePlans
-  * [manual] Test creating a pace plan linked to a race
+  * [x] createPacePlan, fetchPacePlans, deletePacePlan
+  * [x] Include console logs for verification
+  * [x] Add test file for pacePlanManager functions
+  * [x] Test creating a pace plan linked to a race
 
 ---
 
