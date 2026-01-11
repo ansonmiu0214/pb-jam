@@ -32,6 +32,8 @@ jobs:
 
       - name: Build TypeScript
         run: npm run build
+        env:
+          VITE_USE_EMULATOR: 'false'
 
       - name: Start Firebase Emulator
         run: |
@@ -80,6 +82,8 @@ jobs:
 
       - name: Build project
         run: npm run build
+        env:
+          VITE_USE_EMULATOR: 'false'
 
       - name: Deploy to Firebase Hosting (Production)
         if: github.ref == 'refs/heads/main' && github.event_name == 'push'
