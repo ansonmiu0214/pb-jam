@@ -22,12 +22,12 @@
     "env": [
       {
         "hosting": {
-          "VITE_FIREBASE_API_KEY": "AIzaSyCow2zFhVVxQfRqQ_L9Ws3Dh1vj4RIgt5s",
+          "VITE_FIREBASE_API_KEY": "PLACEHOLDER",
           "VITE_FIREBASE_AUTH_DOMAIN": "pb-jam-project.firebaseapp.com",
           "VITE_FIREBASE_PROJECT_ID": "pb-jam",
           "VITE_FIREBASE_STORAGE_BUCKET": "pb-jam.firebasestorage.app",
           "VITE_FIREBASE_MESSAGING_SENDER_ID": "1090164184260",
-          "VITE_FIREBASE_APP_ID": "1:1090164184260:web:444093cf00498832cb2591"
+          "VITE_FIREBASE_APP_ID": "1:1090164184260:web:024f68e5e31c4880cb2591"
         }
       }
     ]
