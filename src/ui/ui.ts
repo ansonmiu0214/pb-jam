@@ -16,11 +16,6 @@ import { createRace, fetchRaces, deleteRace } from '../managers/raceManager';
 import { createPacePlan, fetchPacePlans, deletePacePlan } from '../managers/pacePlanManager';
 
 /**
- * Track whether races are currently loading
- */
-let isLoadingRaces = false;
-
-/**
  * Set the disabled state of race form inputs
  */
 function setRaceFormDisabled(disabled: boolean): void {
@@ -167,7 +162,6 @@ async function loadRaces(): Promise<void> {
   const user = getCurrentUser();
   if (!user) return;
 
-  isLoadingRaces = true;
   setRaceFormDisabled(true);
 
   try {
@@ -219,7 +213,6 @@ async function loadRaces(): Promise<void> {
       racesList.innerHTML = '<p class="error">Error loading races</p>';
     }
   } finally {
-    isLoadingRaces = false;
     setRaceFormDisabled(false);
   }
 }
