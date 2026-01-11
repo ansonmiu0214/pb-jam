@@ -22,7 +22,6 @@ describe('Firestore Operations', () => {
     it('should create a test document in Firestore', async () => {
       try {
         const docId = await writeTestDocument(testUserId);
-        createdDocumentId = docId;
 
         expect(docId).toBeDefined();
         expect(typeof docId).toBe('string');
@@ -42,7 +41,6 @@ describe('Firestore Operations', () => {
         };
 
         const docId = await writeTestDocument(testUserId, customData);
-        createdDocumentId = docId;
 
         expect(docId).toBeDefined();
       } catch (error) {
@@ -53,7 +51,6 @@ describe('Firestore Operations', () => {
     it('should include timestamp in default test data', async () => {
       try {
         const docId = await writeTestDocument(testUserId);
-        createdDocumentId = docId;
 
         const data = await readTestDocument(testUserId, docId);
         expect(data).toBeDefined();
@@ -70,7 +67,6 @@ describe('Firestore Operations', () => {
     it('should read a document that was just created', async () => {
       try {
         const docId = await writeTestDocument(testUserId);
-        createdDocumentId = docId;
 
         const data = await readTestDocument(testUserId, docId);
 
@@ -98,7 +94,6 @@ describe('Firestore Operations', () => {
         };
 
         const docId = await writeTestDocument(testUserId, customData);
-        createdDocumentId = docId;
 
         const readData = await readTestDocument(testUserId, docId);
 
@@ -147,8 +142,6 @@ describe('Firestore Operations', () => {
         expect(result.documentId).toBeDefined();
         expect(result.data).toBeDefined();
         expect(typeof result.documentId).toBe('string');
-
-        createdDocumentId = result.documentId;
       } catch (error) {
         console.log('Expected Firebase error in test:', error);
       }
@@ -171,7 +164,6 @@ describe('Firestore Operations', () => {
     it('should return correct data structure', async () => {
       try {
         const result = await testFirestoreConnection(testUserId, false);
-        createdDocumentId = result.documentId;
 
         expect(result).toHaveProperty('documentId');
         expect(result).toHaveProperty('data');
@@ -202,8 +194,6 @@ describe('Firestore Operations', () => {
         const docId1 = await writeTestDocument(userId1);
         const docId2 = await writeTestDocument(userId2);
 
-        createdDocumentId = docId1;
-
         // Each user should have their own document
         expect(docId1).not.toBe(docId2);
 
@@ -218,7 +208,6 @@ describe('Firestore Operations', () => {
       try {
         const userId = 'test-user-scoped';
         const docId = await writeTestDocument(userId);
-        createdDocumentId = docId;
 
         const data = await readTestDocument(userId, docId);
         expect(data).toBeDefined();

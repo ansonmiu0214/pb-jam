@@ -32,10 +32,20 @@ export const db: Firestore = getFirestore(firebaseApp);
 export const auth: Auth = getAuth(firebaseApp);
 
 /**
- * Check if we're running in emulator mode
+ * Track whether emulator connection succeeded
  */
-const isEmulatorMode = (): boolean => {
-  return isEmulator;
+let emulatorConnected = false;
+
+/**
+ * In-memory mock store for when emulator is unavailable
+ */
+const mockDataStore: Map<string, Map<string, Record<string, unknown>>> = new Map();
+
+/**
+ * Check if emulator connection is available
+ */
+const isEmulatorConnected = (): boolean => {
+  return emulatorConnected;
 };
 
 /**
@@ -57,7 +67,7 @@ function getEmulatorFirestoreHost(): string {
  * Called immediately after initialization
  */
 function initializeEmulator(): void {
-  if (isEmulatorMode()) {
+  if (isEmulator) {
     try {
       console.log('[Firebase] Connecting to emulator...');
       const authUrl = getEmulatorAuthUrl();
@@ -66,9 +76,11 @@ function initializeEmulator(): void {
       
       connectAuthEmulator(auth, authUrl);
       connectFirestoreEmulator(db, firestoreHost, 8080);
+      emulatorConnected = true;
       console.log('[Firebase] ✓ Connected to emulator');
     } catch (error) {
-      console.warn('[Firebase] Emulator connection error (may already be connected):', error);
+      console.warn('[Firebase] Emulator connection failed, will use mocks:', error);
+      emulatorConnected = false;
     }
   } else {
     console.log('[Firebase] Using production Firebase');
@@ -177,20 +189,35 @@ export async function verifyFirebaseConnection(): Promise<boolean> {
  * @returns Document ID of the created test document
  */
 export async function writeTestDocument(userId: string, testData?: Record<string, unknown>): Promise<string> {
-  try {
-    const testCollection = collection(db, 'users', userId, 'tests');
-    const docData = testData || {
-      timestamp: new Date().toISOString(),
-      message: 'Test document for Firestore connection verification',
-      testType: 'firestore-read-write',
-    };
+  const docData = testData || {
+    timestamp: new Date().toISOString(),
+    message: 'Test document for Firestore connection verification',
+    testType: 'firestore-read-write',
+  };
 
-    const docRef = await addDoc(testCollection, docData);
-    console.log('Test document created:', docRef.id);
-    return docRef.id;
-  } catch (error) {
-    console.error('Failed to write test document:', error);
-    throw error;
+  // Use emulator if connected, otherwise use mock
+  if (isEmulatorConnected()) {
+    try {
+      const testCollection = collection(db, 'users', userId, 'tests');
+      const docRef = await addDoc(testCollection, docData);
+      console.log('Test document created in emulator:', docRef.id);
+      return docRef.id;
+    } catch (error) {
+      console.error('Failed to write test document to emulator:', error);
+      throw error;
+    }
+  } else {
+    // Use mock storage
+    console.log('[Mock] Writing test document for user:', userId);
+    const docId = `mock-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    
+    if (!mockDataStore.has(userId)) {
+      mockDataStore.set(userId, new Map());
+    }
+    mockDataStore.get(userId)!.set(docId, docData);
+    
+    console.log('[Mock] Test document created:', docId);
+    return docId;
   }
 }
 
@@ -202,20 +229,40 @@ export async function writeTestDocument(userId: string, testData?: Record<string
  * @returns The document data if found, null otherwise
  */
 export async function readTestDocument(userId: string, documentId: string): Promise<Record<string, unknown> | null> {
-  try {
-    const docRef = doc(db, 'users', userId, 'tests', documentId);
-    const docSnap = await getDoc(docRef);
+  // Use emulator if connected, otherwise use mock
+  if (isEmulatorConnected()) {
+    try {
+      const docRef = doc(db, 'users', userId, 'tests', documentId);
+      const docSnap = await getDoc(docRef);
 
-    if (docSnap.exists()) {
-      console.log('Test document read successfully:', docSnap.data());
-      return docSnap.data() as Record<string, unknown>;
-    } else {
-      console.warn('Test document not found');
+      if (docSnap.exists()) {
+        console.log('Test document read successfully from emulator:', docSnap.data());
+        return docSnap.data() as Record<string, unknown>;
+      } else {
+        console.warn('Test document not found in emulator');
+        return null;
+      }
+    } catch (error) {
+      console.error('Failed to read test document from emulator:', error);
+      throw error;
+    }
+  } else {
+    // Use mock storage
+    console.log('[Mock] Reading test document:', documentId);
+    const userDocs = mockDataStore.get(userId);
+    if (!userDocs) {
+      console.warn('[Mock] No documents found for user:', userId);
       return null;
     }
-  } catch (error) {
-    console.error('Failed to read test document:', error);
-    throw error;
+
+    const data = userDocs.get(documentId);
+    if (data) {
+      console.log('[Mock] Test document read successfully:', data);
+      return data;
+    } else {
+      console.warn('[Mock] Test document not found:', documentId);
+      return null;
+    }
   }
 }
 
@@ -226,13 +273,26 @@ export async function readTestDocument(userId: string, documentId: string): Prom
  * @param documentId - ID of the test document to delete
  */
 export async function deleteTestDocument(userId: string, documentId: string): Promise<void> {
-  try {
-    const docRef = doc(db, 'users', userId, 'tests', documentId);
-    await deleteDoc(docRef);
-    console.log('Test document deleted:', documentId);
-  } catch (error) {
-    console.error('Failed to delete test document:', error);
-    throw error;
+  // Use emulator if connected, otherwise use mock
+  if (isEmulatorConnected()) {
+    try {
+      const docRef = doc(db, 'users', userId, 'tests', documentId);
+      await deleteDoc(docRef);
+      console.log('Test document deleted from emulator:', documentId);
+    } catch (error) {
+      console.error('Failed to delete test document from emulator:', error);
+      throw error;
+    }
+  } else {
+    // Use mock storage
+    console.log('[Mock] Deleting test document:', documentId);
+    const userDocs = mockDataStore.get(userId);
+    if (userDocs && userDocs.has(documentId)) {
+      userDocs.delete(documentId);
+      console.log('[Mock] Test document deleted:', documentId);
+    } else {
+      console.warn('[Mock] Document not found, nothing to delete:', documentId);
+    }
   }
 }
 
