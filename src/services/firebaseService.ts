@@ -1,20 +1,26 @@
-// Firebase SDK initialization and utilitiesimport { initializeApp } from 'firebase/app';
-import { getFirestore, connectFirestoreEmulator, Firestore } from 'firebase/firestore';
-import { getAuth, connectAuthEmulator, Auth, signInWithPopup, signInAnonymously, GoogleAuthProvider, OAuthProvider } from 'firebase/auth';
+// Firebase SDK initialization and utilities
+import { initializeApp } from 'firebase/app';
+import { getFirestore, connectFirestoreEmulator, Firestore, collection, addDoc, getDoc, doc, deleteDoc } from 'firebase/firestore';
+import { getAuth, connectAuthEmulator, Auth, signInWithPopup, signInAnonymously, GoogleAuthProvider } from 'firebase/auth';
 
 /**
  * Firebase configuration
  * In production, these values should come from environment variables
  * For local development, use Firebase Emulator
  */
+const isEmulator = import.meta.env.VITE_USE_EMULATOR === 'true';
+
 const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || 'AIzaSyDummyKeyForEmulator',
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || 'localhost:9099',
+  // Use dummy key for emulator, real key for production
+  apiKey: isEmulator ? 'AIzaSyDummyKeyForEmulator' : (import.meta.env.VITE_FIREBASE_API_KEY || 'AIzaSyDummyKeyForEmulator'),
+  authDomain: isEmulator ? 'localhost' : (import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || 'localhost:9099'),
   projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || 'pb-jam-dev',
   storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || 'pb-jam-dev.appspot.com',
   messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || '000000000000',
   appId: import.meta.env.VITE_FIREBASE_APP_ID || '1:000000000000:web:0000000000000000',
 };
+
+console.log('[Firebase] Config mode:', isEmulator ? 'EMULATOR' : 'PRODUCTION');
 
 // Initialize Firebase
 const firebaseApp = initializeApp(firebaseConfig);
@@ -28,26 +34,57 @@ export const auth: Auth = getAuth(firebaseApp);
 /**
  * Check if we're running in emulator mode
  */
-const isEmulatorMode = () => {
-  return (
-    import.meta.env.MODE === 'development' &&
-    (import.meta.env.VITE_USE_EMULATOR === 'true' || !import.meta.env.VITE_FIREBASE_API_KEY)
-  );
+const isEmulatorMode = (): boolean => {
+  return isEmulator;
 };
 
 /**
- * Connect to Firebase Emulator for local development
+ * Get the emulator hostname
+ * Try localhost first (most direct), fall back to Codespaces subdomain if needed
  */
-export function connectToEmulator(): void {
+function getEmulatorAuthUrl(): string {
+  // Try localhost first - works when ports are port-forwarded
+  return 'http://localhost:9099';
+}
+
+function getEmulatorFirestoreHost(): string {
+  // Use localhost for Firestore as well
+  return 'localhost';
+}
+
+/**
+ * Connect to Firebase Emulator for local development
+ * Called immediately after initialization
+ */
+function initializeEmulator(): void {
   if (isEmulatorMode()) {
     try {
-      connectAuthEmulator(auth, 'http://localhost:9099', { disableWarnings: true });
-      connectFirestoreEmulator(db, 'localhost', 8080);
-      console.log('Connected to Firebase Emulator');
+      console.log('[Firebase] Connecting to emulator...');
+      const authUrl = getEmulatorAuthUrl();
+      const firestoreHost = getEmulatorFirestoreHost();
+      console.log('[Firebase] Auth URL:', authUrl, 'Firestore Host:', firestoreHost);
+      
+      connectAuthEmulator(auth, authUrl);
+      connectFirestoreEmulator(db, firestoreHost, 8080);
+      console.log('[Firebase] ✓ Connected to emulator');
     } catch (error) {
-      console.warn('Emulator already connected or error:', error);
+      console.warn('[Firebase] Emulator connection error (may already be connected):', error);
     }
+  } else {
+    console.log('[Firebase] Using production Firebase');
   }
+}
+
+// Initialize emulator immediately on module load
+initializeEmulator();
+
+/**
+ * Connect to Firebase Emulator for local development
+ * Re-exported for compatibility with existing code
+ */
+export function connectToEmulator(): void {
+  // Already initialized above
+  console.log('[Firebase] connectToEmulator() called (already initialized)');
 }
 
 /**
@@ -129,5 +166,109 @@ export async function verifyFirebaseConnection(): Promise<boolean> {
   } catch (error) {
     console.error('Firebase connection verification failed:', error);
     return false;
+  }
+}
+
+/**
+ * Write a test document to Firestore
+ * Used to verify that authenticated users can write to Firestore
+ * @param userId - Current user's ID
+ * @param testData - Data to write to the test document
+ * @returns Document ID of the created test document
+ */
+export async function writeTestDocument(userId: string, testData?: Record<string, unknown>): Promise<string> {
+  try {
+    const testCollection = collection(db, 'users', userId, 'tests');
+    const docData = testData || {
+      timestamp: new Date().toISOString(),
+      message: 'Test document for Firestore connection verification',
+      testType: 'firestore-read-write',
+    };
+
+    const docRef = await addDoc(testCollection, docData);
+    console.log('Test document created:', docRef.id);
+    return docRef.id;
+  } catch (error) {
+    console.error('Failed to write test document:', error);
+    throw error;
+  }
+}
+
+/**
+ * Read a test document from Firestore
+ * Used to verify that authenticated users can read from Firestore
+ * @param userId - Current user's ID
+ * @param documentId - ID of the test document to read
+ * @returns The document data if found, null otherwise
+ */
+export async function readTestDocument(userId: string, documentId: string): Promise<Record<string, unknown> | null> {
+  try {
+    const docRef = doc(db, 'users', userId, 'tests', documentId);
+    const docSnap = await getDoc(docRef);
+
+    if (docSnap.exists()) {
+      console.log('Test document read successfully:', docSnap.data());
+      return docSnap.data() as Record<string, unknown>;
+    } else {
+      console.warn('Test document not found');
+      return null;
+    }
+  } catch (error) {
+    console.error('Failed to read test document:', error);
+    throw error;
+  }
+}
+
+/**
+ * Delete a test document from Firestore
+ * Used to clean up test documents after verification
+ * @param userId - Current user's ID
+ * @param documentId - ID of the test document to delete
+ */
+export async function deleteTestDocument(userId: string, documentId: string): Promise<void> {
+  try {
+    const docRef = doc(db, 'users', userId, 'tests', documentId);
+    await deleteDoc(docRef);
+    console.log('Test document deleted:', documentId);
+  } catch (error) {
+    console.error('Failed to delete test document:', error);
+    throw error;
+  }
+}
+
+/**
+ * Run a complete Firestore connection test
+ * Writes a test document, reads it back, and optionally deletes it
+ * @param userId - Current user's ID
+ * @param cleanup - Whether to delete the test document after reading (default: false)
+ * @returns Test result with document ID and data
+ */
+export async function testFirestoreConnection(
+  userId: string,
+  cleanup: boolean = false
+): Promise<{ documentId: string; data: Record<string, unknown> }> {
+  try {
+    console.log('Starting Firestore connection test for user:', userId);
+
+    // Step 1: Write test document
+    const documentId = await writeTestDocument(userId);
+
+    // Step 2: Read test document back
+    const data = await readTestDocument(userId, documentId);
+    if (!data) {
+      throw new Error('Failed to read back test document');
+    }
+
+    console.log('Firestore connection test passed ✓');
+
+    // Step 3: Cleanup (optional)
+    if (cleanup) {
+      await deleteTestDocument(userId, documentId);
+    }
+
+    return { documentId, data };
+  } catch (error) {
+    console.error('Firestore connection test failed:', error);
+    throw error;
   }
 }

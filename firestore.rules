@@ -1,0 +1,47 @@
+// Firebase Firestore Security Rules
+// This file contains the security rules for Firestore to ensure user-level data isolation
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Allow read/write to user's own data only
+    match /users/{userId}/{document=**} {
+      allow read, write: if request.auth.uid == userId;
+    }
+
+    // Default: deny all other access
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
+
+/*
+EXPLANATION:
+
+1. User-Scoped Collections:
+   - Path: /users/{userId}/...
+   - Only the authenticated user matching {userId} can read/write
+   - This ensures complete data isolation between users
+
+2. Document Structure:
+   - /users/{userId}/races/{raceId}
+   - /users/{userId}/races/{raceId}/pacePlans/{pacePlanId}
+   - /users/{userId}/tests/{testDocId}  (for Prompt 3.3 testing)
+
+3. Security Benefits:
+   ✓ Users can only read their own data
+   ✓ Users can only write to their own data
+   ✓ No user can access another user's data
+   ✓ All other collections are denied by default
+
+4. Testing:
+   - Test documents are created under /users/{userId}/tests
+   - Each user's test documents are isolated
+   - Useful for verifying Firestore connectivity
+
+5. Future Improvements:
+   - Add specific validation rules per collection
+   - Add timestamp constraints (createdAt, updatedAt)
+   - Add field-level access control if needed
+*/

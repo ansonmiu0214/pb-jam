@@ -1,10 +1,16 @@
 /**
  * Main entry point for PB Jam application
  */
+import { initializeUI } from './ui/ui';
 
-// Example: Log that the app has loaded
-console.log('PB Jam - Spotify Race Playlist Visualizer loaded');
+console.log('PB Jam - Spotify Race Playlist Visualizer loading...');
 
-// Future: Initialize the UI and Firebase
-// import { initializeUI } from './ui/ui';
-// initializeUI();
+// Initialize the UI when the app loads
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', () => {
+    initializeUI();
+  });
+} else {
+  // DOM is already loaded
+  initializeUI();
+}
