@@ -32,10 +32,31 @@ jobs:
 
       - name: Build TypeScript
         run: npm run build
+        env:
+          VITE_USE_EMULATOR: 'false'
+
+      - name: Start Firebase Emulator
+        run: |
+          npm run start-emulator &
+          # Wait for emulator to start (up to 30 seconds)
+          for i in {1..30}; do
+            if curl -s http://localhost:9099 > /dev/null 2>&1; then
+              echo "Firebase Emulator is ready"
+              exit 0
+            fi
+            echo "Waiting for Firebase Emulator... ($i/30)"
+            sleep 1
+          done
+          echo "Firebase Emulator failed to start, will use mocks"
+          exit 0
+        timeout-minutes: 1
 
       - name: Run tests with Vitest
         run: npm test
         continue-on-error: false
+        env:
+          VITE_USE_EMULATOR: 'true'
+          CI: 'true'
 
   deploy:
     needs: build-and-test
@@ -61,6 +82,9 @@ jobs:
 
       - name: Build project
         run: npm run build
+        env:
+          VITE_USE_EMULATOR: 'false'
+          VITE_FIREBASE_API_KEY: ${{ secrets.FIREBASE_API_KEY }}
 
       - name: Deploy to Firebase Hosting (Production)
         if: github.ref == 'refs/heads/main' && github.event_name == 'push'
@@ -72,6 +96,7 @@ jobs:
           projectId: pb-jam
         env:
           FIREBASE_CLI_EXPERIMENTS: webframeworks
+          VITE_FIREBASE_API_KEY: ${{ secrets.FIREBASE_API_KEY }}
 
       - name: Deploy to Firebase Hosting (Preview)
         if: github.event_name == 'pull_request'
@@ -83,3 +108,4 @@ jobs:
           projectId: pb-jam
         env:
           FIREBASE_CLI_EXPERIMENTS: webframeworks
+          VITE_FIREBASE_API_KEY: ${{ secrets.FIREBASE_API_KEY }}

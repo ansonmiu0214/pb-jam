@@ -6,11 +6,20 @@ This file provides instructions for the Copilot agent on how to manage and maint
 
 ## Scope
 
+### Planning Files
 Files in `planning/`:
 
 * `spec.md` – detailed specification
 * `prompt_plan.md` – series of LLM prompts
 * `todo.md` – project checklist
+
+### Documentation Files
+All `.md` documentation files created by the Copilot agent must be placed in the `docs/` folder, including:
+- Implementation guides
+- Prompt summaries
+- Architecture documentation
+- Feature documentation
+- Setup and configuration guides
 
 On every change or commit, the agent must:
 

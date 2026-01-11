@@ -197,10 +197,259 @@ After completing Tier 1 MVP:
 * Spotify API retry with exponential backoff
 * Accessibility and responsive enhancements
 
+### Chunk 8: Split Editing & Validation
+
+```text
+# Prompt 8.1 — Add split editing UI
+Extend the pace plan UI to support editing splits.
+
+Requirements:
+- Display splits as a list or table:
+  - distance (km)
+  - target time (seconds or mm:ss input)
+  - computed pace (min/km, read-only)
+- Allow adding a new split
+- Allow deleting an existing split
+- Allow editing distance and target time fields
+- Do NOT enforce validation yet
+- Temporary invalid states are allowed in the UI
+
+Constraints:
+- No breaking changes to existing pace plans
+- Use TypeScript types consistently
 ```
 
----
+```text
+# Prompt 8.2 — Core split validation logic
+Implement split validation logic in pacePlanManager.ts.
 
-This file now fully encapsulates **all Tier 1 prompts** and provides the Tier 2 outline.
+Validation rules:
+- Sum of split distances must equal race distance
+- Sum of split target times must equal pace plan target time
+- Minimum split distance is 0.1 km
+- Elevation may be negative (no validation error)
 
+Implementation details:
+- Return structured results:
+  {
+    errors: ValidationError[],
+    warnings: ValidationWarning[]
+  }
+- Errors block saving
+- Warnings do not block saving
+- Do not wire to UI yet
 ```
+
+```text
+# Prompt 8.3 — Merge & split helpers
+Implement split manipulation helpers in pacePlanManager.ts.
+
+Functions:
+- mergeSplits(indexA, indexB)
+- splitSplit(index, strategy = "even")
+
+Behavior:
+- mergeSplits combines distance and time
+- splitSplit divides distance and time evenly by default
+- Return new split arrays (no mutation)
+
+Then wire these helpers to the split editing UI.
+```
+
+```text
+# Prompt 8.4 — Enforce validation before save
+Prevent saving a pace plan if validation errors exist.
+
+UI behavior:
+- Inline color-coded feedback:
+  - Red = blocking error
+  - Amber = warning
+- Save button disabled when errors exist
+- Error messages shown near affected splits
+
+Do not change validation rules.
+```
+
+### Chunk 9: Elevation & Distance Visualization
+
+```text
+# Prompt 9.1 — Persist elevation data
+Extend split editing to include elevation (integer meters).
+
+Requirements:
+- Editable elevation input per split
+- Persist elevation to Firestore
+- Backward compatible with existing pace plans
+- Default elevation = 0 for older data
+```
+
+```text
+# Prompt 9.2 — Render elevation on timeline
+Extend timelineRenderer.ts to visualize elevation.
+
+Rendering rules:
+- Uphill (positive elevation): red
+- Downhill (negative elevation): green
+- Flat: gray
+- Elevation aligns with split segments
+
+Performance:
+- No noticeable slowdown for large playlists
+```
+
+```text
+# Prompt 9.3 — Distance markers
+Add distance markers to the timeline.
+
+Requirements:
+- Marker at every 1 km
+- Respect race unit (km/miles) for labeling
+- Pace display remains min/km
+- Markers reposition correctly on resize
+```
+
+### Chunk 10: Undo / Redo System
+
+```text
+Prompt 10.1 — Undo/redo manager
+Implement undoRedoManager.ts.
+
+API:
+- push(state)
+- undo()
+- redo()
+- canUndo()
+- canRedo()
+
+Requirements:
+- Bounded stack size
+- Safe memory usage
+- Generic (not pace-plan specific)
+```
+
+```text
+# Prompt 10.2 — Undo/redo for split editing
+Wire undo/redo to split operations:
+- Edit distance
+- Edit target time
+- Add split
+- Remove split
+- Merge / split operations
+
+Ensure:
+- UI and state fully restored
+- Validation state restored correctly
+```
+
+```text
+# Prompt 10.3 — Undo/redo for playlist reordering
+Wire undo/redo to playlist drag-and-drop.
+
+Rules:
+- Each reorder is one undo step
+- Undo/redo stack resets:
+  - On page reload
+  - After successful Spotify save
+```
+
+### Chunk 11: Tooltips & Visual Feedback
+
+```text
+# Prompt 11.1 — Unified tooltip system
+Implement a tooltip system in ui.ts.
+
+Behavior:
+- Hover-triggered on desktop
+- Tap-triggered on touch devices
+- Dismiss on outside click/tap
+- Single tooltip instance reused
+```
+
+```text
+# Prompt 11.2 — Song metadata tooltips
+Add tooltips to song rectangles.
+
+Content:
+- Track title
+- Artist name
+- Duration
+
+Tooltip follows pointer/finger position.
+```
+
+```text
+# Prompt 11.3 — Playlist overflow indicators
+Visually mark songs that extend beyond race total time.
+
+Rules:
+- Red border for overflow songs
+- Songs remain draggable
+- Overflow does not block saving
+```
+
+### Chunk 12: Tags & Metadata
+
+```text
+# Prompt 12.1 — Tags for races and pace plans
+Add tag support to races and pace plans.
+
+Requirements:
+- Tags are free-form strings
+- Add/remove tags via UI
+- Persist tags in Firestore
+- Backward compatible with existing data
+```
+
+```text
+# Prompt 12.2 — Tag filtering
+Enable filtering by tags.
+
+Behavior:
+- Filter races by tag
+- Filter pace plans by tag
+- Default chronological order preserved
+```
+
+### Chunk 13: Spotify API Hardening
+
+```text
+# Prompt 13.1 — Retry with exponential backoff
+Add retry logic to Spotify API save operations.
+
+Rules:
+- Max 3 retries
+- Exponential backoff
+- Show retry status in UI
+```
+
+```text
+# Prompt 13.2 — Failure handling
+Handle Spotify API failures after retries exhausted.
+
+Behavior:
+- Show blocking error message
+- Local state remains unchanged
+- User can retry manually
+```
+
+### Chunk 14: Accessibility & Responsiveness
+
+```text
+# Prompt 14.1 — Accessibility improvements
+Improve accessibility across the app.
+
+Requirements:
+- ARIA labels for buttons and inputs
+- Keyboard navigation for modals
+- Accessible drag-and-drop where feasible
+```
+
+```text
+# Prompt 14.2 — Tablet & touch refinements
+Improve responsiveness for tablet devices (iPad 11").
+
+Requirements:
+- Touch-friendly hit targets
+- Momentum scrolling on timeline
+- No regressions on desktop
+````
