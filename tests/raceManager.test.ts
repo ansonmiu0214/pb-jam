@@ -151,9 +151,7 @@ describe('RaceManager - CRUD Operations', () => {
     });
 
     it('should set createdAt and updatedAt timestamps', async () => {
-      const beforeTime = new Date();
       const race = await createRace('user-123', 'Test Race', 10, 'km');
-      const afterTime = new Date();
 
       expect(race.createdAt).toBeDefined();
       expect(race.updatedAt).toBeDefined();

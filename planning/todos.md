@@ -76,10 +76,12 @@ This todo.md is a thorough checklist to guide your implementation of the Spotify
   * [x] createRace, fetchRaces, deleteRace
   * [x] Include console logs for verification
   * [x] Add test file for raceManager functions
-* [ ] Implement `pacePlanManager.ts` basic CRUD (Prompt 4.3)
+* [x] Implement `pacePlanManager.ts` basic CRUD (Prompt 4.3)
 
-  * [ ] createPacePlan, fetchPacePlans
-  * [ ] [manual] Test creating a pace plan linked to a race
+  * [x] createPacePlan, fetchPacePlans, deletePacePlan
+  * [x] Include console logs for verification
+  * [x] Add test file for pacePlanManager functions
+  * [x] Test creating a pace plan linked to a race
 
 ---
 
