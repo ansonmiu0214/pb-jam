@@ -1,6 +1,6 @@
 // Firebase SDK initialization and utilities
 import { initializeApp } from 'firebase/app';
-import { getFirestore, connectFirestoreEmulator, Firestore, collection, addDoc, getDoc, doc, deleteDoc } from 'firebase/firestore';
+import { getFirestore, connectFirestoreEmulator, Firestore, collection, addDoc, getDoc, doc, deleteDoc, getDocs, query, where } from 'firebase/firestore';
 import { getAuth, connectAuthEmulator, Auth, signInWithPopup, signInAnonymously, GoogleAuthProvider } from 'firebase/auth';
 
 /**
@@ -332,3 +332,8 @@ export async function testFirestoreConnection(
     throw error;
   }
 }
+
+/**
+ * Re-export Firestore utilities for use in managers
+ */
+export { getDocs, query, where };
