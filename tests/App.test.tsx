@@ -1,7 +1,7 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
 import { ThemeProvider } from '@mui/material/styles';
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, expect, beforeEach, vi } from 'vitest';
 import { App } from '../src/components/App';
 import { spotifyTheme } from '../src/theme/spotifyTheme';
 import * as userService from '../src/services/userService';

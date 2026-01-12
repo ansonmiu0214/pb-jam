@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { LoginScreen } from './LoginScreen';
 import { MainApp } from './MainApp';
 import {
-  getCurrentUser,
   onUserChange,
   isUserLoggedIn,
 } from '../services/userService';

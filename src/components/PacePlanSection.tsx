@@ -369,3 +369,5 @@ export const PacePlanSection = forwardRef<PacePlanSectionHandle>((_, ref) => {
     </Box>
   );
 });
+
+PacePlanSection.displayName = 'PacePlanSection';
