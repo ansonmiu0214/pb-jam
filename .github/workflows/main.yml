@@ -33,7 +33,8 @@ jobs:
       - name: Build TypeScript
         run: npm run build
         env:
-          VITE_USE_EMULATOR: 'false'
+          VITE_USE_FIRESTORE_EMULATOR: 'false'
+          VITE_USE_AUTH_EMULATOR: 'false'
 
       - name: Start Firebase Emulator
         run: |
@@ -55,7 +56,8 @@ jobs:
         run: npm test
         continue-on-error: false
         env:
-          VITE_USE_EMULATOR: 'true'
+          VITE_USE_FIRESTORE_EMULATOR: 'true'
+          VITE_USE_AUTH_EMULATOR: 'true'
           CI: 'true'
 
   deploy:
@@ -83,7 +85,8 @@ jobs:
       - name: Build project
         run: npm run build
         env:
-          VITE_USE_EMULATOR: 'false'
+          VITE_USE_FIRESTORE_EMULATOR: 'false'
+          VITE_USE_AUTH_EMULATOR: 'false'
           VITE_FIREBASE_API_KEY: ${{ secrets.FIREBASE_API_KEY }}
 
       - name: Deploy to Firebase Hosting (Production)
