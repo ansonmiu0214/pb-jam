@@ -4,6 +4,7 @@ import { ThemeProvider } from '@mui/material/styles';
 import { describe, expect, vi, beforeEach, test } from 'vitest';
 import { LoginScreen } from '../src/components/LoginScreen';
 import { spotifyTheme } from '../src/theme/spotifyTheme';
+import * as firebaseService from '../src/services/firebaseService';
 
 // Mock Firebase auth functions
 vi.mock('../src/services/firebaseService', () => ({
@@ -12,7 +13,6 @@ vi.mock('../src/services/firebaseService', () => ({
   loginWithSpotify: vi.fn(),
 }));
 
-const firebaseService = await import('../src/services/firebaseService');
 const mockLoginWithGoogle = vi.mocked(firebaseService.loginWithGoogle);
 const mockLoginAnonymously = vi.mocked(firebaseService.loginAnonymously);
 const mockLoginWithSpotify = vi.mocked(firebaseService.loginWithSpotify);
