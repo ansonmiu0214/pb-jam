@@ -16,6 +16,8 @@ import {
 } from '@mui/icons-material';
 import { RaceSection } from './RaceSection';
 import { PacePlanSection, type PacePlanSectionHandle } from './PacePlanSection';
+import { PlaylistDisplay } from './PlaylistDisplay';
+import { SpotifyDebug } from './SpotifyDebug';
 import {
   getCurrentUser,
   onUserChange,
@@ -106,11 +108,19 @@ export const MainApp: React.FC = () => {
 
       <Container maxWidth="lg" sx={{ mt: 4, pb: 4 }}>
         <Grid container spacing={4}>
+          <Grid item xs={12}>
+            <SpotifyDebug />
+          </Grid>
           <Grid item xs={12} md={6}>
             <RaceSection onRaceCreated={handleRaceCreated} />
           </Grid>
           <Grid item xs={12} md={6}>
             <PacePlanSection ref={pacePlanSectionRef} />
+          </Grid>
+          <Grid item xs={12}>
+            <PlaylistDisplay onPlaylistSelect={(playlist) => {
+              console.log('Playlist selected for testing:', playlist.name);
+            }} />
           </Grid>
         </Grid>
       </Container>

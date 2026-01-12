@@ -38,6 +38,10 @@ const mockStore = new MockFirestoreStore();
 // Mock Firebase service
 vi.mock('../src/services/firebaseService', () => ({
   db: { _: 'mock' },
+  auth: {
+    onAuthStateChanged: vi.fn(() => vi.fn()),
+    currentUser: null,
+  },
 }));
 
 // Mock Firebase Firestore functions

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { LoginScreen } from './LoginScreen';
 import { MainApp } from './MainApp';
+import { SpotifyCallback } from './SpotifyCallback';
 import {
   onUserChange,
   isUserLoggedIn,
@@ -28,8 +29,15 @@ export const App: React.FC = () => {
     return unsubscribe;
   }, []);
 
+  // Check if this is a Spotify callback
+  const isSpotifyCallback = window.location.search.includes('code=') || window.location.search.includes('error=');
+
   if (loading) {
     return null; // Could add a loading spinner here
+  }
+
+  if (isSpotifyCallback) {
+    return <SpotifyCallback />;
   }
 
   return isLoggedIn ? <MainApp /> : <LoginScreen />;

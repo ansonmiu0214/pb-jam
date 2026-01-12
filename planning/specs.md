@@ -85,7 +85,7 @@ A **single-page web application** (frontend-only) that allows users to visualize
 * **Business Logic Modules** (unchanged):
   * `raceManager.ts` – CRUD operations for races
   * `pacePlanManager.ts` – CRUD and validation for pace plans
-  * `playlistManager.ts` – Spotify API integration, caching, save (pending)
+  * `playlistManager.ts` – Spotify API integration, OAuth authentication, playlist caching, and fetching (implemented)
   * `timelineRenderer.ts` – canvas drawing of splits, songs, elevation (pending)
   * `undoRedoManager.ts` – undo/redo stack (pending)
   * `firebaseService.ts` – persistence

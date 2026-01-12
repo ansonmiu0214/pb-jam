@@ -14,6 +14,7 @@ import {
   InputLabel,
   Alert,
   CircularProgress,
+  SelectChangeEvent,
 } from '@mui/material';
 import {
   Delete as DeleteIcon,
@@ -80,7 +81,7 @@ export const PacePlanSection = forwardRef<PacePlanSectionHandle>((_, ref) => {
       
       // If there are races but no selected race, don't auto-select
       // Let user choose
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Failed to load races:', err);
       setError('Failed to load races. Please try again.');
     } finally {
@@ -93,9 +94,9 @@ export const PacePlanSection = forwardRef<PacePlanSectionHandle>((_, ref) => {
     if (!user) return;
 
     try {
-      const pacePlanList = await fetchPacePlans(user.id, raceId);
+      const pacePlanList = await fetchPacePlans(raceId);
       setPacePlans(pacePlanList);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Failed to load pace plans:', err);
       setError('Failed to load pace plans. Please try again.');
     }
@@ -122,7 +123,7 @@ export const PacePlanSection = forwardRef<PacePlanSectionHandle>((_, ref) => {
     setError(null);
 
     try {
-      await createPacePlan(user.id, formData.raceId, {
+      await createPacePlan(formData.raceId, {
         title: formData.title.trim(),
         targetTime: targetTimeSeconds,
       });
@@ -134,7 +135,7 @@ export const PacePlanSection = forwardRef<PacePlanSectionHandle>((_, ref) => {
       if (selectedRaceId) {
         await loadPacePlans(selectedRaceId);
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Failed to create pace plan:', err);
       setError('Failed to create pace plan. Please try again.');
     } finally {
@@ -154,11 +155,11 @@ export const PacePlanSection = forwardRef<PacePlanSectionHandle>((_, ref) => {
     if (!user) return;
 
     try {
-      await deletePacePlan(user.id, pacePlanToDelete.id);
+      await deletePacePlan(pacePlanToDelete.id);
       if (selectedRaceId) {
         await loadPacePlans(selectedRaceId);
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Failed to delete pace plan:', err);
       setError('Failed to delete pace plan. Please try again.');
     } finally {
@@ -173,7 +174,16 @@ export const PacePlanSection = forwardRef<PacePlanSectionHandle>((_, ref) => {
   };
 
   const handleInputChange = (field: keyof PacePlanFormData) => (
-    event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement> | any
+    event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+  ) => {
+    setPacePlanFormData(prev => ({
+      ...prev,
+      [field]: event.target.value,
+    }));
+  };
+
+  const handleSelectChange = (field: keyof PacePlanFormData) => (
+    event: SelectChangeEvent<string>
   ) => {
     setPacePlanFormData(prev => ({
       ...prev,
@@ -216,7 +226,7 @@ export const PacePlanSection = forwardRef<PacePlanSectionHandle>((_, ref) => {
                 <InputLabel>Select Race</InputLabel>
                 <Select
                   value={formData.raceId}
-                  onChange={handleInputChange('raceId')}
+                  onChange={handleSelectChange('raceId')}
                   label="Select Race"
                 >
                   {races.length === 0 ? (

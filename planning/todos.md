@@ -38,7 +38,8 @@ This todo.md is a thorough checklist to guide your implementation of the Spotify
 * [x] Business logic modules (unchanged from vanilla version)
   * [x] `raceManager.ts`, `pacePlanManager.ts`, `firebaseService.ts`
   * [x] `models/types.ts`
-  * [ ] `playlistManager.ts`, `timelineRenderer.ts`, `undoRedoManager.ts` (pending)
+  * [ ] `timelineRenderer.ts`, `undoRedoManager.ts` (pending)
+  * [x] `playlistManager.ts` - Spotify OAuth, playlist fetching, and caching
 * [x] Run LLM prompts for React refactor
 
 ---
@@ -93,14 +94,18 @@ This todo.md is a thorough checklist to guide your implementation of the Spotify
 
 ## Spotify Integration
 
-* [manual] Setup Spotify OAuth login
-* Implement playlist fetch & cache (Prompt 5.1)
-
-  * [manual] Test displaying playlist names
-* Link pace plan to Spotify playlist (Prompt 5.2)
-
-  * [manual] Verify Firestore stores playlist ID
-  * [manual] Confirm linked playlist displays with pace plan
+* [x] Setup Spotify OAuth login
+* [x] Implement playlist fetch & cache (Prompt 5.1)
+  * [x] OAuth login via Spotify with popup flow
+  * [x] Fetch user playlists after login with pagination
+  * [x] Cache playlists in memory for session
+  * [x] Test displaying playlist names with PlaylistDisplay component
+  * [x] Added Spotify login to LoginScreen component
+  * [x] Created comprehensive test cases
+* [ ] Link pace plan to Spotify playlist (Prompt 5.2)
+  * [ ] Add playlist selection UI to pace plan creation
+  * [ ] Verify Firestore stores playlist ID
+  * [ ] Confirm linked playlist displays with pace plan
 
 ---
 

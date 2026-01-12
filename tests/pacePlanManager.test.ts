@@ -35,9 +35,18 @@ class MockFirestoreStore {
 
 const mockStore = new MockFirestoreStore();
 
+// Mock user service
+vi.mock('../src/services/userService', () => ({
+  getUserId: vi.fn(() => 'test-user-123'),
+}));
+
 // Mock Firebase service
 vi.mock('../src/services/firebaseService', () => ({
   db: { _: 'mock' },
+  auth: {
+    onAuthStateChanged: vi.fn(() => vi.fn()),
+    currentUser: { uid: 'test-user-123' },
+  },
 }));
 
 // Mock Firebase Firestore functions
@@ -126,30 +135,29 @@ describe('PacePlanManager - CRUD Operations', () => {
 
   describe('createPacePlan', () => {
     it('should create a pace plan with required fields', async () => {
-      const userId = 'user-123';
       const raceId = 'race-456';
       const title = 'Boston Marathon Pace';
       const targetTime = 10800; // 3 hours in seconds
 
-      const pacePlan = await createPacePlan(userId, raceId, { title, targetTime });
+      const pacePlan = await createPacePlan(raceId, { title, targetTime });
 
       expect(pacePlan).toBeDefined();
       expect(pacePlan.id).toBeDefined();
-      expect(pacePlan.userId).toBe(userId);
+      expect(pacePlan.userId).toBe('test-user-123');
       expect(pacePlan.raceId).toBe(raceId);
       expect(pacePlan.title).toBe(title);
       expect(pacePlan.targetTime).toBe(targetTime);
     });
 
     it('should initialize empty splits and tags arrays', async () => {
-      const pacePlan = await createPacePlan('user-123', 'race-456', { title: 'Test Plan', targetTime: 3600 });
+      const pacePlan = await createPacePlan('race-456', { title: 'Test Plan', targetTime: 3600 });
 
       expect(pacePlan.splits).toEqual([]);
       expect(pacePlan.tags).toEqual([]);
     });
 
     it('should set createdAt and updatedAt timestamps', async () => {
-      const pacePlan = await createPacePlan('user-123', 'race-456', { title: 'Test Plan', targetTime: 3600 });
+      const pacePlan = await createPacePlan('race-456', { title: 'Test Plan', targetTime: 3600 });
 
       expect(pacePlan.createdAt).toBeDefined();
       expect(pacePlan.updatedAt).toBeDefined();
@@ -160,7 +168,7 @@ describe('PacePlanManager - CRUD Operations', () => {
     it('should log success message to console', async () => {
       const consoleSpy = vi.spyOn(console, 'log');
 
-      const pacePlan = await createPacePlan('user-123', 'race-456', { title: 'Test Plan', targetTime: 3600 });
+      const pacePlan = await createPacePlan('race-456', { title: 'Test Plan', targetTime: 3600 });
 
       expect(consoleSpy).toHaveBeenCalledWith(
         expect.stringContaining('[PacePlanManager] Pace plan created successfully'),
@@ -173,17 +181,16 @@ describe('PacePlanManager - CRUD Operations', () => {
 
   describe('fetchPacePlans', () => {
     it('should fetch pace plans for a specific race', async () => {
-      const userId = 'user-123';
       const raceId = 'race-456';
 
       // Create some pace plans for this race
-      await createPacePlan(userId, raceId, { title: 'Plan 1', targetTime: 3600 });
-      await createPacePlan(userId, raceId, { title: 'Plan 2', targetTime: 5400 });
+      await createPacePlan(raceId, { title: 'Plan 1', targetTime: 3600 });
+      await createPacePlan(raceId, { title: 'Plan 2', targetTime: 5400 });
 
       // Create a pace plan for a different race (should not be returned)
-      await createPacePlan(userId, 'race-789', { title: 'Other Plan', targetTime: 7200 });
+      await createPacePlan('race-789', { title: 'Other Plan', targetTime: 7200 });
 
-      const pacePlans = await fetchPacePlans(userId, raceId);
+      const pacePlans = await fetchPacePlans(raceId);
 
       expect(pacePlans).toBeDefined();
       expect(Array.isArray(pacePlans)).toBe(true);
@@ -193,17 +200,16 @@ describe('PacePlanManager - CRUD Operations', () => {
     });
 
     it('should return empty array when no pace plans exist', async () => {
-      const pacePlans = await fetchPacePlans('user-123', 'unknown-race');
+      const pacePlans = await fetchPacePlans('unknown-race');
 
       expect(pacePlans).toEqual([]);
     });
 
     it('should return pace plan objects with all fields', async () => {
-      const userId = 'user-123';
       const raceId = 'race-456';
-      await createPacePlan(userId, raceId, { title: 'Test Plan', targetTime: 3600 });
+      await createPacePlan(raceId, { title: 'Test Plan', targetTime: 3600 });
 
-      const pacePlans = await fetchPacePlans(userId, raceId);
+      const pacePlans = await fetchPacePlans(raceId);
 
       expect(pacePlans.length).toBeGreaterThan(0);
       const pacePlan = pacePlans[0];
@@ -218,13 +224,12 @@ describe('PacePlanManager - CRUD Operations', () => {
 
     it('should log the number of fetched pace plans', async () => {
       const consoleSpy = vi.spyOn(console, 'log');
-      const userId = 'user-123';
       const raceId = 'race-456';
 
-      await createPacePlan(userId, raceId, { title: 'Plan 1', targetTime: 3600 });
-      await createPacePlan(userId, raceId, { title: 'Plan 2', targetTime: 5400 });
+      await createPacePlan(raceId, { title: 'Plan 1', targetTime: 3600 });
+      await createPacePlan(raceId, { title: 'Plan 2', targetTime: 5400 });
 
-      await fetchPacePlans(userId, raceId);
+      await fetchPacePlans(raceId);
 
       expect(consoleSpy).toHaveBeenCalledWith(
         expect.stringMatching(/\[PacePlanManager\] Fetched \d+ pace plans for race/)
@@ -236,28 +241,26 @@ describe('PacePlanManager - CRUD Operations', () => {
 
   describe('deletePacePlan', () => {
     it('should delete a pace plan by ID', async () => {
-      const userId = 'user-123';
       const raceId = 'race-456';
-      const pacePlan = await createPacePlan(userId, raceId, { title: 'Test Plan', targetTime: 3600 });
+      const pacePlan = await createPacePlan(raceId, { title: 'Test Plan', targetTime: 3600 });
 
       // Verify pace plan was created
-      let pacePlans = await fetchPacePlans(userId, raceId);
+      let pacePlans = await fetchPacePlans(raceId);
       expect(pacePlans.length).toBeGreaterThan(0);
 
       // Delete the pace plan
-      await deletePacePlan(userId, pacePlan.id);
+      await deletePacePlan(pacePlan.id);
 
       // Verify pace plan was deleted
-      pacePlans = await fetchPacePlans(userId, raceId);
+      pacePlans = await fetchPacePlans(raceId);
       expect(pacePlans.length).toBe(0);
     });
 
     it('should log success message when deleting', async () => {
       const consoleSpy = vi.spyOn(console, 'log');
-      const userId = 'user-123';
-      const pacePlan = await createPacePlan(userId, 'race-456', { title: 'Test Plan', targetTime: 3600 });
+      const pacePlan = await createPacePlan('race-456', { title: 'Test Plan', targetTime: 3600 });
 
-      await deletePacePlan(userId, pacePlan.id);
+      await deletePacePlan(pacePlan.id);
 
       expect(consoleSpy).toHaveBeenCalledWith(
         expect.stringContaining(`[PacePlanManager] Pace plan deleted successfully: ${pacePlan.id}`)
@@ -269,14 +272,13 @@ describe('PacePlanManager - CRUD Operations', () => {
 
   describe('Integration scenarios', () => {
     it('should handle multiple pace plans for one race', async () => {
-      const userId = 'user-123';
       const raceId = 'race-456';
 
-      await createPacePlan(userId, raceId, { title: 'Conservative', targetTime: 10800 });
-      await createPacePlan(userId, raceId, { title: 'Target', targetTime: 9000 });
-      await createPacePlan(userId, raceId, { title: 'Aggressive', targetTime: 8100 });
+      await createPacePlan(raceId, { title: 'Conservative', targetTime: 10800 });
+      await createPacePlan(raceId, { title: 'Target', targetTime: 9000 });
+      await createPacePlan(raceId, { title: 'Aggressive', targetTime: 8100 });
 
-      const pacePlans = await fetchPacePlans(userId, raceId);
+      const pacePlans = await fetchPacePlans(raceId);
 
       expect(pacePlans.length).toBe(3);
       expect(pacePlans.map((p) => p.title)).toContain('Conservative');
@@ -285,15 +287,14 @@ describe('PacePlanManager - CRUD Operations', () => {
     });
 
     it('should handle multiple races with different pace plans', async () => {
-      const userId = 'user-123';
       const race1Id = 'race-1';
       const race2Id = 'race-2';
 
-      await createPacePlan(userId, race1Id, { title: 'Race1 Plan', targetTime: 3600 });
-      await createPacePlan(userId, race2Id, { title: 'Race2 Plan', targetTime: 7200 });
+      await createPacePlan(race1Id, { title: 'Race1 Plan', targetTime: 3600 });
+      await createPacePlan(race2Id, { title: 'Race2 Plan', targetTime: 7200 });
 
-      const race1Plans = await fetchPacePlans(userId, race1Id);
-      const race2Plans = await fetchPacePlans(userId, race2Id);
+      const race1Plans = await fetchPacePlans(race1Id);
+      const race2Plans = await fetchPacePlans(race2Id);
 
       expect(race1Plans.length).toBeGreaterThan(0);
       expect(race2Plans.length).toBeGreaterThan(0);

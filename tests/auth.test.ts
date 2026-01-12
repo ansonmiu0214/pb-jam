@@ -7,13 +7,13 @@ import { getCurrentUser, setCurrentUser, isUserLoggedIn } from '../src/services/
  * Tests that user can authenticate and state is properly stored
  */
 describe('Authentication Flow', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     // Clear user state before each test
-    setCurrentUser(null);
+    await setCurrentUser(null);
   });
 
   describe('User authentication', () => {
-    it('should store user data after login', () => {
+    it('should store user data after login', async () => {
       const mockUser = {
         id: 'test-user-123',
         email: 'test@example.com',
@@ -21,19 +21,19 @@ describe('Authentication Flow', () => {
         provider: 'google' as const,
       };
 
-      setCurrentUser(mockUser);
+      await setCurrentUser(mockUser);
 
       expect(isUserLoggedIn()).toBe(true);
       expect(getCurrentUser()).toEqual(mockUser);
     });
 
-    it('should return valid user after setting', () => {
+    it('should return valid user after setting', async () => {
       const mockUser = {
         id: 'anon-user-456',
         provider: 'anonymous' as const,
       };
 
-      setCurrentUser(mockUser);
+      await setCurrentUser(mockUser);
       const user = getCurrentUser();
 
       expect(user).not.toBeNull();
@@ -41,7 +41,7 @@ describe('Authentication Flow', () => {
       expect(user?.provider).toBe('anonymous');
     });
 
-    it('should have required fields for logged-in user', () => {
+    it('should have required fields for logged-in user', async () => {
       const mockUser = {
         id: 'user-789',
         email: 'user@test.com',
@@ -49,7 +49,7 @@ describe('Authentication Flow', () => {
         provider: 'google' as const,
       };
 
-      setCurrentUser(mockUser);
+      await setCurrentUser(mockUser);
       const user = getCurrentUser();
 
       expect(user).not.toBeNull();
@@ -59,26 +59,26 @@ describe('Authentication Flow', () => {
   });
 
   describe('Anonymous login flow', () => {
-    it('should create anonymous user with valid ID', () => {
+    it('should create anonymous user with valid ID', async () => {
       const anonUser = {
         id: 'anon-' + Math.random().toString(36).substr(2, 9),
         provider: 'anonymous' as const,
       };
 
-      setCurrentUser(anonUser);
+      await setCurrentUser(anonUser);
 
       expect(isUserLoggedIn()).toBe(true);
       expect(getCurrentUser()?.provider).toBe('anonymous');
       expect(getCurrentUser()?.id).toBeTruthy();
     });
 
-    it('should not require email for anonymous user', () => {
+    it('should not require email for anonymous user', async () => {
       const anonUser = {
         id: 'anon-123',
         provider: 'anonymous' as const,
       };
 
-      setCurrentUser(anonUser);
+      await setCurrentUser(anonUser);
       const user = getCurrentUser();
 
       expect(user?.email).toBeUndefined();
@@ -87,7 +87,7 @@ describe('Authentication Flow', () => {
   });
 
   describe('Google login flow', () => {
-    it('should create user with email from Google', () => {
+    it('should create user with email from Google', async () => {
       const googleUser = {
         id: 'google-123',
         email: 'user@gmail.com',
@@ -95,7 +95,7 @@ describe('Authentication Flow', () => {
         provider: 'google' as const,
       };
 
-      setCurrentUser(googleUser);
+      await setCurrentUser(googleUser);
       const user = getCurrentUser();
 
       expect(user?.email).toBe('user@gmail.com');
@@ -103,14 +103,14 @@ describe('Authentication Flow', () => {
       expect(user?.displayName).toBe('Google User');
     });
 
-    it('should handle Google user without display name', () => {
+    it('should handle Google user without display name', async () => {
       const googleUser = {
         id: 'google-456',
         email: 'user2@gmail.com',
         provider: 'google' as const,
       };
 
-      setCurrentUser(googleUser);
+      await setCurrentUser(googleUser);
       const user = getCurrentUser();
 
       expect(user?.email).toBe('user2@gmail.com');
@@ -119,7 +119,7 @@ describe('Authentication Flow', () => {
   });
 
   describe('User ID persistence', () => {
-    it('should maintain user ID across multiple accesses', () => {
+    it('should maintain user ID across multiple accesses', async () => {
       const userId = 'persistent-user-id';
       const mockUser = {
         id: userId,
@@ -127,7 +127,7 @@ describe('Authentication Flow', () => {
         provider: 'google' as const,
       };
 
-      setCurrentUser(mockUser);
+      await setCurrentUser(mockUser);
 
       const firstAccess = getCurrentUser();
       const secondAccess = getCurrentUser();
@@ -137,7 +137,7 @@ describe('Authentication Flow', () => {
       expect(firstAccess?.id).toBe(secondAccess?.id);
     });
 
-    it('should change user ID when switching users', () => {
+    it('should change user ID when switching users', async () => {
       const user1 = {
         id: 'user-1',
         email: 'user1@example.com',
@@ -150,16 +150,16 @@ describe('Authentication Flow', () => {
         provider: 'google' as const,
       };
 
-      setCurrentUser(user1);
+      await setCurrentUser(user1);
       expect(getCurrentUser()?.id).toBe('user-1');
 
-      setCurrentUser(user2);
+      await setCurrentUser(user2);
       expect(getCurrentUser()?.id).toBe('user-2');
     });
   });
 
   describe('Login state validation', () => {
-    it('should correctly report login status', () => {
+    it('should correctly report login status', async () => {
       expect(isUserLoggedIn()).toBe(false);
 
       const mockUser = {
@@ -167,10 +167,10 @@ describe('Authentication Flow', () => {
         provider: 'google' as const,
       };
 
-      setCurrentUser(mockUser);
+      await setCurrentUser(mockUser);
       expect(isUserLoggedIn()).toBe(true);
 
-      setCurrentUser(null);
+      await setCurrentUser(null);
       expect(isUserLoggedIn()).toBe(false);
     });
 
@@ -179,11 +179,11 @@ describe('Authentication Flow', () => {
       expect(isUserLoggedIn()).toBe(false);
     });
 
-    it('should provide different user info based on provider', () => {
+    it('should provide different user info based on provider', async () => {
       const providers = ['google', 'spotify', 'anonymous'] as const;
 
-      providers.forEach((provider) => {
-        setCurrentUser({
+      for (const provider of providers) {
+        await setCurrentUser({
           id: `${provider}-user`,
           email: provider !== 'anonymous' ? `user@${provider}.com` : undefined,
           provider,
@@ -191,7 +191,7 @@ describe('Authentication Flow', () => {
 
         const user = getCurrentUser();
         expect(user?.provider).toBe(provider);
-      });
+      }
     });
   });
 });

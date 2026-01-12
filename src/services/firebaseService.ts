@@ -109,18 +109,22 @@ function initializeEmulator(): void {
  * Setup auth state listener to keep user service in sync with Firebase auth
  */
 function setupAuthStateListener(): void {
-  onAuthStateChanged(auth, (firebaseUser) => {
-    if (firebaseUser) {
-      // User logged in
-      setCurrentUser({
-        id: firebaseUser.uid,
-        email: firebaseUser.email || undefined,
-        displayName: firebaseUser.displayName || undefined,
-        provider: firebaseUser.isAnonymous ? 'anonymous' : 'google',
-      });
-    } else {
-      // User logged out
-      setCurrentUser(null);
+  onAuthStateChanged(auth, async (firebaseUser) => {
+    try {
+      if (firebaseUser) {
+        // User logged in
+        await setCurrentUser({
+          id: firebaseUser.uid,
+          email: firebaseUser.email || undefined,
+          displayName: firebaseUser.displayName || undefined,
+          provider: firebaseUser.isAnonymous ? 'anonymous' : 'google',
+        });
+      } else {
+        // User logged out
+        await setCurrentUser(null);
+      }
+    } catch (error) {
+      console.error('[Firebase] Error setting current user:', error);
     }
   });
 }
@@ -138,16 +142,91 @@ export function connectToEmulator(): void {
 }
 
 /**
- * Login with Spotify (placeholder)
- * This will be implemented with Spotify OAuth2 flow
+ * Login with Spotify
+ * Opens Spotify OAuth flow in a popup and handles the authentication
  */
 export async function loginWithSpotify(): Promise<void> {
-  // TODO: Implement Spotify OAuth2 login
-  // - Create OAuth provider for Spotify
-  // - Use signInWithPopup with Spotify provider
-  // - Store Spotify token for playlist operations
-  console.log('Spotify login placeholder - to be implemented');
-  throw new Error('Spotify login not yet implemented');
+  const { getSpotifyAuthUrl, handleSpotifyCallback } = await import('./playlistManager');
+  
+  try {
+    const authUrl = await getSpotifyAuthUrl();
+    
+    // Open Spotify OAuth in a popup
+    const popup = window.open(
+      authUrl,
+      'spotify-auth',
+      'width=600,height=700,scrollbars=yes,resizable=yes'
+    );
+    
+    if (!popup) {
+      throw new Error('Failed to open authentication popup. Please allow popups for this site.');
+    }
+    
+    // Wait for the OAuth callback
+    const authResult = await waitForSpotifyCallback(popup);
+    
+    if (authResult.error) {
+      throw new Error(authResult.error);
+    }
+    
+    // Handle the callback and get user profile
+    const userProfile = await handleSpotifyCallback(authResult.code);
+    
+    // Set user in user service
+    await setCurrentUser({
+      id: userProfile.id,
+      email: userProfile.email || undefined,
+      displayName: userProfile.display_name || undefined,
+      provider: 'spotify',
+    });
+    
+    console.log('Spotify login successful:', userProfile.display_name || userProfile.id);
+  } catch (error) {
+    console.error('Spotify login failed:', error);
+    throw error;
+  }
+}
+
+/**
+ * Wait for Spotify OAuth callback in popup
+ */
+function waitForSpotifyCallback(popup: Window): Promise<{ code?: string; error?: string }> {
+  return new Promise((resolve, reject) => {
+    const checkClosed = setInterval(() => {
+      if (popup.closed) {
+        clearInterval(checkClosed);
+        reject(new Error('Authentication was cancelled'));
+      }
+    }, 1000);
+    
+    const messageListener = (event: MessageEvent) => {
+      if (event.origin !== window.location.origin) {
+        return;
+      }
+      
+      if (event.data && event.data.type === 'spotify-auth') {
+        clearInterval(checkClosed);
+        window.removeEventListener('message', messageListener);
+        popup.close();
+        
+        if (event.data.error) {
+          reject(new Error(event.data.error));
+        } else {
+          resolve({ code: event.data.code });
+        }
+      }
+    };
+    
+    window.addEventListener('message', messageListener);
+    
+    // Timeout after 5 minutes
+    setTimeout(() => {
+      clearInterval(checkClosed);
+      window.removeEventListener('message', messageListener);
+      popup.close();
+      reject(new Error('Authentication timeout'));
+    }, 5 * 60 * 1000);
+  });
 }
 
 /**

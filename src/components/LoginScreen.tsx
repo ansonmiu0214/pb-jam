@@ -17,11 +17,28 @@ import {
 import {
   loginWithGoogle,
   loginAnonymously,
+  loginWithSpotify,
 } from '../services/firebaseService';
+import { SpotifyDebug } from './SpotifyDebug';
 
 export const LoginScreen: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  const handleSpotifyLogin = async () => {
+    setError(null);
+    setLoading(true);
+    
+    try {
+      await loginWithSpotify();
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      console.error('Spotify login failed:', err);
+      setError(errorMessage || 'Spotify login failed. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleGoogleLogin = async () => {
     setError(null);
@@ -29,9 +46,10 @@ export const LoginScreen: React.FC = () => {
     
     try {
       await loginWithGoogle();
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : String(err);
       console.error('Google login failed:', err);
-      setError(err.message || 'Google login failed. Please try again.');
+      setError(errorMessage || 'Google login failed. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -43,9 +61,10 @@ export const LoginScreen: React.FC = () => {
     
     try {
       await loginAnonymously();
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : String(err);
       console.error('Anonymous login failed:', err);
-      setError(err.message || 'Anonymous login failed. Please try again.');
+      setError(errorMessage || 'Anonymous login failed. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -57,11 +76,17 @@ export const LoginScreen: React.FC = () => {
         sx={{
           minHeight: '100vh',
           display: 'flex',
+          flexDirection: 'column',
           alignItems: 'center',
           justifyContent: 'center',
           py: 4,
+          gap: 3,
         }}
       >
+        <Box sx={{ width: '100%' }}>
+          <SpotifyDebug />
+        </Box>
+        
         <Card
           sx={{
             width: '100%',
@@ -82,17 +107,21 @@ export const LoginScreen: React.FC = () => {
 
             <Stack spacing={2}>
               <Button
-                variant="outlined"
+                variant="contained"
                 size="large"
                 fullWidth
-                disabled
                 startIcon={<MusicNoteIcon />}
+                onClick={handleSpotifyLogin}
+                disabled={loading}
                 sx={{
                   py: 1.5,
-                  opacity: 0.5,
+                  bgcolor: '#1db954',
+                  '&:hover': {
+                    bgcolor: '#1aa34a',
+                  },
                 }}
               >
-                🎵 Login with Spotify (Coming Soon)
+                🎵 Login with Spotify
               </Button>
 
               <Button

@@ -7,9 +7,9 @@ describe('Firebase Service', () => {
     connectToEmulator();
   });
 
-  it('should initialize Firebase configuration', () => {
-    const verified = verifyFirebaseConnection();
-    expect(verified).resolves.toBe(true);
+  it('should initialize Firebase configuration', async () => {
+    const verified = await verifyFirebaseConnection();
+    expect(verified).toBe(true);
   });
 
   it('should have Firestore initialized', async () => {

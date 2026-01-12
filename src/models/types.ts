@@ -55,6 +55,44 @@ export interface SpotifyTrack {
 }
 
 /**
+ * Spotify playlist representation
+ */
+export interface SpotifyPlaylist {
+  id: string;
+  name: string;
+  description?: string;
+  tracks: {
+    total: number;
+  };
+  owner: {
+    id: string;
+    display_name: string;
+  };
+  images: Array<{
+    url: string;
+    height: number;
+    width: number;
+  }>;
+  external_urls: {
+    spotify: string;
+  };
+}
+
+/**
+ * Spotify user profile representation
+ */
+export interface SpotifyUserProfile {
+  id: string;
+  display_name: string;
+  email?: string;
+  images: Array<{
+    url: string;
+    height: number;
+    width: number;
+  }>;
+}
+
+/**
  * User authentication state
  */
 export interface User {

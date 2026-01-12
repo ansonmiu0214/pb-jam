@@ -61,7 +61,7 @@ export const RaceSection: React.FC<RaceSectionProps> = ({ onRaceCreated }) => {
     try {
       const raceList = await fetchRaces(user.id);
       setRaces(raceList);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Failed to load races:', err);
       setError('Failed to load races. Please try again.');
     } finally {
@@ -109,12 +109,11 @@ export const RaceSection: React.FC<RaceSectionProps> = ({ onRaceCreated }) => {
 
     try {
       console.log('[RaceSection] Calling createRace with:', { 
-        userId: user.id,
         title: formData.title.trim(),
         distance,
         unit: formData.unit,
       });
-      const result = await createRace(user.id, {
+      const result = await createRace({
         title: formData.title.trim(),
         distance,
         unit: formData.unit,
@@ -134,7 +133,7 @@ export const RaceSection: React.FC<RaceSectionProps> = ({ onRaceCreated }) => {
       if (onRaceCreated) {
         onRaceCreated();
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('[RaceSection] Error caught:', err);
       setError('Failed to create race. Please try again.');
     } finally {
@@ -154,7 +153,7 @@ export const RaceSection: React.FC<RaceSectionProps> = ({ onRaceCreated }) => {
     try {
       await deleteRace(raceToDelete.id);
       await loadRaces();
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Failed to delete race:', err);
       setError('Failed to delete race. Please try again.');
     } finally {
@@ -169,7 +168,7 @@ export const RaceSection: React.FC<RaceSectionProps> = ({ onRaceCreated }) => {
   };
 
   const handleInputChange = (field: keyof RaceFormData) => (
-    event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement> | any
+    event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement> | React.ChangeEvent<{ name?: string; value: unknown }>
   ) => {
     setFormData(prev => ({
       ...prev,
