@@ -134,7 +134,7 @@ describe('RaceManager - CRUD Operations', () => {
       const distance = 42.195;
       const unit = 'km' as const;
 
-      const race = await createRace(userId, title, distance, unit);
+      const race = await createRace(userId, { title, distance, unit });
 
       expect(race).toBeDefined();
       expect(race.id).toBeDefined();
@@ -145,13 +145,13 @@ describe('RaceManager - CRUD Operations', () => {
     });
 
     it('should initialize empty tags array', async () => {
-      const race = await createRace('user-123', 'Test Race', 10, 'km');
+      const race = await createRace('user-123', { title: 'Test Race', distance: 10, unit: 'km' });
 
       expect(race.tags).toEqual([]);
     });
 
     it('should set createdAt and updatedAt timestamps', async () => {
-      const race = await createRace('user-123', 'Test Race', 10, 'km');
+      const race = await createRace('user-123', { title: 'Test Race', distance: 10, unit: 'km' });
 
       expect(race.createdAt).toBeDefined();
       expect(race.updatedAt).toBeDefined();
@@ -160,8 +160,8 @@ describe('RaceManager - CRUD Operations', () => {
     });
 
     it('should handle both km and mi units', async () => {
-      const raceKm = await createRace('user-123', 'Race KM', 10, 'km');
-      const raceMi = await createRace('user-123', 'Race MI', 5, 'mi');
+      const raceKm = await createRace('user-123', { title: 'Race KM', distance: 10, unit: 'km' });
+      const raceMi = await createRace('user-123', { title: 'Race MI', distance: 5, unit: 'mi' });
 
       expect(raceKm.unit).toBe('km');
       expect(raceMi.unit).toBe('mi');
@@ -170,7 +170,7 @@ describe('RaceManager - CRUD Operations', () => {
     it('should log success message to console', async () => {
       const consoleSpy = vi.spyOn(console, 'log');
 
-      const race = await createRace('user-123', 'Test Race', 10, 'km');
+      const race = await createRace('user-123', { title: 'Test Race', distance: 10, unit: 'km' });
 
       // Check that console.log was called with the success message and the race object
       expect(consoleSpy).toHaveBeenCalledWith(
@@ -187,8 +187,8 @@ describe('RaceManager - CRUD Operations', () => {
       const userId = 'user-123';
 
       // Create some test races
-      await createRace(userId, 'Race 1', 10, 'km');
-      await createRace(userId, 'Race 2', 5, 'mi');
+      await createRace(userId, { title: 'Race 1', distance: 10, unit: 'km' });
+      await createRace(userId, { title: 'Race 2', distance: 5, unit: 'mi' });
 
       const races = await fetchRaces(userId);
 
@@ -205,7 +205,7 @@ describe('RaceManager - CRUD Operations', () => {
 
     it('should return race objects with all fields', async () => {
       const userId = 'user-123';
-      await createRace(userId, 'Test Race', 21.1, 'km');
+      await createRace(userId, { title: 'Test Race', distance: 21.1, unit: 'km' });
 
       const races = await fetchRaces(userId);
 
@@ -223,8 +223,8 @@ describe('RaceManager - CRUD Operations', () => {
       const consoleSpy = vi.spyOn(console, 'log');
       const userId = 'user-123';
 
-      await createRace(userId, 'Race 1', 10, 'km');
-      await createRace(userId, 'Race 2', 5, 'mi');
+      await createRace(userId, { title: 'Race 1', distance: 10, unit: 'km' });
+      await createRace(userId, { title: 'Race 2', distance: 5, unit: 'mi' });
 
       await fetchRaces(userId);
 
@@ -239,7 +239,7 @@ describe('RaceManager - CRUD Operations', () => {
   describe('deleteRace', () => {
     it('should delete a race by ID', async () => {
       const userId = 'user-123';
-      const race = await createRace(userId, 'Test Race', 10, 'km');
+      const race = await createRace(userId, { title: 'Test Race', distance: 10, unit: 'km' });
 
       // Verify race was created
       let races = await fetchRaces(userId);
@@ -256,7 +256,7 @@ describe('RaceManager - CRUD Operations', () => {
     it('should log success message when deleting', async () => {
       const consoleSpy = vi.spyOn(console, 'log');
       const userId = 'user-123';
-      const race = await createRace(userId, 'Test Race', 10, 'km');
+      const race = await createRace(userId, { title: 'Test Race', distance: 10, unit: 'km' });
 
       await deleteRace(userId, race.id);
 
@@ -270,7 +270,7 @@ describe('RaceManager - CRUD Operations', () => {
     it('should log TODO for cascade delete', async () => {
       const consoleSpy = vi.spyOn(console, 'log');
       const userId = 'user-123';
-      const race = await createRace(userId, 'Test Race', 10, 'km');
+      const race = await createRace(userId, { title: 'Test Race', distance: 10, unit: 'km' });
 
       await deleteRace(userId, race.id);
 
@@ -287,8 +287,8 @@ describe('RaceManager - CRUD Operations', () => {
       const user1 = 'user-1';
       const user2 = 'user-2';
 
-      await createRace(user1, 'User1 Race', 10, 'km');
-      await createRace(user2, 'User2 Race', 5, 'mi');
+      await createRace(user1, { title: 'User1 Race', distance: 10, unit: 'km' });
+      await createRace(user2, { title: 'User2 Race', distance: 5, unit: 'mi' });
 
       const user1Races = await fetchRaces(user1);
       const user2Races = await fetchRaces(user2);
@@ -300,9 +300,9 @@ describe('RaceManager - CRUD Operations', () => {
     it('should support creating multiple races for one user', async () => {
       const userId = 'user-123';
 
-      await createRace(userId, 'Marathon', 42.195, 'km');
-      await createRace(userId, 'Half Marathon', 21.1, 'km');
-      await createRace(userId, '5K', 5, 'km');
+      await createRace(userId, { title: 'Marathon', distance: 42.195, unit: 'km' });
+      await createRace(userId, { title: 'Half Marathon', distance: 21.1, unit: 'km' });
+      await createRace(userId, { title: '5K', distance: 5, unit: 'km' });
 
       const races = await fetchRaces(userId);
 

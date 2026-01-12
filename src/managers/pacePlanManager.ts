@@ -12,38 +12,47 @@ import {
 } from 'firebase/firestore';
 
 /**
+ * Get the collection name based on environment
+ */
+function getPacePlansCollectionName(): string {
+  const env = import.meta.env.VITE_ENVIRONMENT || 'prod';
+  return env === 'dev' ? 'pacePlans-dev' : 'pacePlans';
+}
+
+/**
  * Create a new pace plan and store it in Firestore linked to a race
  * @param userId - Current user's ID
  * @param raceId - Race ID to link this pace plan to
- * @param title - Pace plan title
- * @param targetTime - Target time in seconds
+ * @param pacePlanData - Pace plan data object with title and targetTime
  * @returns The created PacePlan object with ID
  */
 export async function createPacePlan(
   userId: string,
   raceId: string,
-  title: string,
-  targetTime: number
+  pacePlanData: {
+    title: string;
+    targetTime: number;
+  }
 ): Promise<PacePlan> {
   try {
-    const pacePlanData = {
+    const docData = {
       userId,
       raceId,
-      title,
-      targetTime,
+      title: pacePlanData.title,
+      targetTime: pacePlanData.targetTime,
       splits: [],
       tags: [],
       createdAt: new Date(),
       updatedAt: new Date(),
     };
 
-    const pacePlansCollection = collection(db, 'users', userId, 'pacePlans');
-    const docRef = await addDoc(pacePlansCollection, pacePlanData);
+    const pacePlansCollection = collection(db, 'users', userId, getPacePlansCollectionName());
+    const docRef = await addDoc(pacePlansCollection, docData);
 
     const newPacePlan: PacePlan = {
       id: docRef.id,
-      ...pacePlanData,
-    };
+      ...docData,
+    } as PacePlan;
 
     console.log('[PacePlanManager] Pace plan created successfully:', newPacePlan);
     return newPacePlan;
@@ -61,7 +70,7 @@ export async function createPacePlan(
  */
 export async function fetchPacePlans(userId: string, raceId: string): Promise<PacePlan[]> {
   try {
-    const pacePlansCollection = collection(db, 'users', userId, 'pacePlans');
+    const pacePlansCollection = collection(db, 'users', userId, getPacePlansCollectionName());
     const q = query(pacePlansCollection, where('raceId', '==', raceId));
     const querySnapshot = await getDocs(q);
 
@@ -99,7 +108,7 @@ export async function fetchPacePlans(userId: string, raceId: string): Promise<Pa
  */
 export async function deletePacePlan(userId: string, pacePlanId: string): Promise<void> {
   try {
-    const pacePlanRef = doc(db, 'users', userId, 'pacePlans', pacePlanId);
+    const pacePlanRef = doc(db, 'users', userId, getPacePlansCollectionName(), pacePlanId);
     await deleteDoc(pacePlanRef);
 
     console.log(`[PacePlanManager] Pace plan deleted successfully: ${pacePlanId}`);

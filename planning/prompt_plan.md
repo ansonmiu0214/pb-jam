@@ -4,6 +4,46 @@ This file contains a series of LLM prompts for generating code incrementally.
 **Goal:** minimal end-to-end workflow: CI/CD → Spotify login → create race/pace plan → link playlist → reorder tracks.
 **After Tier 1 is working**, incremental enhancements (validation, split editing, elevation, tags, tooltips) can be added in Tier 2.
 
+**UPDATED:** Project has been refactored from vanilla TypeScript to React with Material-UI.
+
+---
+
+## Tier 0: React + Material-UI Refactor (COMPLETED)
+
+### Chunk 0: React Migration
+
+```text
+# Prompt 0.1: Refactor to React + Material-UI
+Follow this plan to refactor the current implementation to use React and Material UI:
+
+1. **Setup React + MUI dependencies** – Update package.json with React, ReactDOM, MUI core/icons, emotion (MUI's CSS-in-JS), and React testing dependencies, then update vite.config.ts and vitest.config.ts for React JSX support.
+
+2. **Create Spotify-themed MUI theme** – Build a custom theme file with Spotify green (#1db954) as primary color, dark backgrounds, and override MUI components to match current styling.
+
+3. **Convert entry point to React** – Replace index.html root div with React root, update src/index.ts to src/index.tsx to use ReactDOM.createRoot(), and wrap the app with theme provider.
+
+4. **Build React login screen component** – Convert vanilla login HTML/event handlers to a React component using MUI Button, Box, and Typography; integrate with existing userService and firebaseService.
+
+5. **Build main app layout component** – Create a responsive layout using MUI AppBar, Container, and Grid; refactor race and pace plan sections into reusable components with CRUD handlers.
+
+6. **Refactor race & pace plan cards** – Convert src/ui/ui.ts list rendering to React components using MUI Card, TextField, Select; attach handlers via React callbacks instead of manual event listeners.
+
+7. **Replace alerts/confirms with MUI dialogs** – Convert alert() and confirm() calls to MUI Dialog and Snackbar components for loading feedback and confirmations.
+
+8. **Migrate styles** – Remove styles.css dependency and use MUI theme config and sx prop for component-specific styling.
+
+9. **Update tests for React components** – Add React Testing Library tests for login screen and main app components.
+
+10. **Update TypeScript config and linting** – Ensure tsconfig.json and ESLint rules support React/JSX syntax with react/react-hooks plugins.
+```
+
+**Result:** Application successfully converted to React + Material-UI with:
+- Complete UI refactor using Material-UI components
+- Custom Spotify-themed styling
+- Proper confirmation dialogs
+- React component tests
+- TypeScript and ESLint configuration for React
+
 ---
 
 ## Tier 1: Minimal End-to-End Workflow
