@@ -12,36 +12,52 @@ import {
 } from 'firebase/firestore';
 
 /**
+ * Get the collection name based on environment
+ */
+function getRacesCollectionName(): string {
+  const env = import.meta.env.VITE_ENVIRONMENT || 'prod';
+  return env === 'dev' ? 'races-dev' : 'races';
+}
+
+/**
  * Create a new race and store it in Firestore
  * @param userId - Current user's ID
- * @param title - Race title
- * @param distance - Race distance
- * @param unit - Distance unit ('km' or 'mi')
+ * @param raceData - Race data object with title, distance, unit
  * @returns The created Race object with ID
  */
 export async function createRace(
   userId: string,
-  title: string,
-  distance: number,
-  unit: 'km' | 'mi'
+  raceData: {
+    title: string;
+    distance: number;
+    unit: 'km' | 'mi';
+  }
 ): Promise<Race> {
   try {
-    const raceData = {
+    console.log('[RaceManager.createRace] Called with:', { userId, raceData });
+    
+    const docData = {
       userId,
-      title,
-      distance,
-      unit,
+      title: raceData.title,
+      distance: raceData.distance,
+      unit: raceData.unit,
       tags: [],
       createdAt: new Date(),
       updatedAt: new Date(),
     };
 
-    const racesCollection = collection(db, 'users', userId, 'races');
-    const docRef = await addDoc(racesCollection, raceData);
+    console.log('[RaceManager.createRace] Preparing to add doc with data:', docData);
+
+    const racesCollection = collection(db, 'users', userId, getRacesCollectionName());
+    console.log('[RaceManager.createRace] Got collection reference');
+    
+    console.log('[RaceManager.createRace] About to call addDoc...');
+    const docRef = await addDoc(racesCollection, docData);
+    console.log('[RaceManager.createRace] Document added with ID:', docRef.id);
 
     const newRace: Race = {
       id: docRef.id,
-      ...raceData,
+      ...docData,
     };
 
     console.log('[RaceManager] Race created successfully:', newRace);
@@ -59,7 +75,7 @@ export async function createRace(
  */
 export async function fetchRaces(userId: string): Promise<Race[]> {
   try {
-    const racesCollection = collection(db, 'users', userId, 'races');
+    const racesCollection = collection(db, 'users', userId, getRacesCollectionName());
     const q = query(racesCollection, where('userId', '==', userId));
     const querySnapshot = await getDocs(q);
 
@@ -96,7 +112,7 @@ export async function fetchRaces(userId: string): Promise<Race[]> {
  */
 export async function deleteRace(userId: string, raceId: string): Promise<void> {
   try {
-    const raceRef = doc(db, 'users', userId, 'races', raceId);
+    const raceRef = doc(db, 'users', userId, getRacesCollectionName(), raceId);
     await deleteDoc(raceRef);
 
     console.log(`[RaceManager] Race deleted successfully: ${raceId}`);

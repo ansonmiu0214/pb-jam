@@ -9,8 +9,8 @@
     "build": "vite build",
     "lint": "eslint src tests --fix",
     "test": "vitest --run",
-    "start-dev": "concurrently \"firebase emulators:start\" \"vite\"",
-    "start-emulator": "firebase emulators:start",
+    "start-dev": "concurrently \"npx firebase emulators:start --only firestore\" \"vite\"",
+    "start-emulator": "npx firebase emulators:start --only firestore",
     "start-vite": "vite"
   },
   "keywords": [
@@ -23,14 +23,30 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
-    "firebase": "^10.8.0"
+    "@emotion/react": "^11.11.1",
+    "@emotion/styled": "^11.11.0",
+    "@mui/icons-material": "^5.14.9",
+    "@mui/material": "^5.14.9",
+    "firebase": "^10.8.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
   },
   "devDependencies": {
+    "@testing-library/jest-dom": "^6.1.3",
+    "@testing-library/react": "^13.4.0",
+    "@testing-library/user-event": "^14.4.3",
+    "@types/react": "^18.2.21",
+    "@types/react-dom": "^18.2.7",
     "@typescript-eslint/eslint-plugin": "^8.0.0",
     "@typescript-eslint/parser": "^8.0.0",
+    "@vitejs/plugin-react": "^4.1.0",
     "concurrently": "^8.2.0",
     "eslint": "^8.0.0",
+    "eslint-plugin-react": "^7.33.2",
+    "eslint-plugin-react-hooks": "^4.6.0",
     "firebase-tools": "^13.0.0",
+    "jest": "^30.2.0",
+    "jsdom": "^22.1.0",
     "terser": "^5.0.0",
     "typescript": "^5.3.0",
     "vite": "^7.3.1",

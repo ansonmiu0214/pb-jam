@@ -4,13 +4,14 @@
 
 A **single-page web application** (frontend-only) that allows users to visualize Spotify playlists alongside running race pace plans. Users can adjust song order to match their race splits and save the playlist back to Spotify.
 
-* **Frontend only:** Vanilla HTML/CSS/JavaScript (ES Modules)
+* **Frontend:** React with Material-UI (MUI) components and TypeScript
+* **UI Framework:** Material-UI with custom Spotify-themed styling
 * **TypeScript** for type safety
-* **Linting:** ESLint
-* **Testing:** Vitest
-* **No build step required**
+* **Build system:** Vite with React plugin
+* **Linting:** ESLint with React/React Hooks support
+* **Testing:** Vitest with React Testing Library and jsdom
 * **Responsive design:** desktop-first, works on iPad 11-inch
-* **Accessibility:** hover/touch tooltips, color-coded feedback
+* **Accessibility:** MUI's built-in accessibility features, color-coded feedback
 * **CI/CD:** GitHub Actions
 * **Data persistence:** Firebase (Firestore)
 
@@ -73,15 +74,26 @@ A **single-page web application** (frontend-only) that allows users to visualize
 
 ## Architecture & Modules
 
-* **ES Modules** for separation:
+* **React Components** with TypeScript:
+  * `App.tsx` – Main application component with authentication state management
+  * `LoginScreen.tsx` – User authentication screen with Google/Anonymous login
+  * `MainApp.tsx` – Main application layout with AppBar and navigation
+  * `RaceSection.tsx` – Race management component with CRUD operations
+  * `PacePlanSection.tsx` – Pace plan management component
+  * `ConfirmDialog.tsx` – Reusable confirmation dialog component
 
+* **Business Logic Modules** (unchanged):
   * `raceManager.ts` – CRUD operations for races
   * `pacePlanManager.ts` – CRUD and validation for pace plans
-  * `playlistManager.ts` – Spotify API integration, caching, save
-  * `timelineRenderer.ts` – canvas drawing of splits, songs, elevation
-  * `ui.ts` – modal handling, tooltips, drag/drop
-  * `undoRedoManager.ts` – undo/redo stack
+  * `playlistManager.ts` – Spotify API integration, caching, save (pending)
+  * `timelineRenderer.ts` – canvas drawing of splits, songs, elevation (pending)
+  * `undoRedoManager.ts` – undo/redo stack (pending)
   * `firebaseService.ts` – persistence
+  * `userService.ts` – user state management
+
+* **Theme & Styling:**
+  * `spotifyTheme.ts` – Custom Material-UI theme with Spotify branding
+  * All styling handled through MUI's sx prop and theme system
 
 ## Data Model (Firebase)
 

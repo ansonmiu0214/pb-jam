@@ -1,26 +1,32 @@
 // Firebase SDK initialization and utilities
 import { initializeApp } from 'firebase/app';
 import { getFirestore, connectFirestoreEmulator, Firestore, collection, addDoc, getDoc, doc, deleteDoc, getDocs, query, where } from 'firebase/firestore';
-import { getAuth, connectAuthEmulator, Auth, signInWithPopup, signInAnonymously, GoogleAuthProvider } from 'firebase/auth';
+import { getAuth, connectAuthEmulator, Auth, signInWithPopup, signInAnonymously, GoogleAuthProvider, onAuthStateChanged } from 'firebase/auth';
+import { setCurrentUser } from './userService';
 
 /**
  * Firebase configuration
  * In production, these values should come from environment variables
- * For local development, use Firebase Emulator
+ * Firestore and Auth emulators can be controlled independently
  */
-const isEmulator = import.meta.env.VITE_USE_EMULATOR === 'true';
+const useFirestoreEmulator = import.meta.env.VITE_USE_FIRESTORE_EMULATOR === 'true';
+const useAuthEmulator = import.meta.env.VITE_USE_AUTH_EMULATOR === 'true';
 
 const firebaseConfig = {
-  // Use dummy key for emulator, real key for production
-  apiKey: isEmulator ? 'AIzaSyDummyKeyForEmulator' : (import.meta.env.VITE_FIREBASE_API_KEY || 'AIzaSyDummyKeyForEmulator'),
-  authDomain: isEmulator ? 'localhost' : (import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || 'localhost:9099'),
+  // Always use production Firebase credentials (required for real auth)
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || 'AIzaSyDummyKeyForEmulator',
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || 'localhost:9099',
   projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || 'pb-jam-dev',
   storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || 'pb-jam-dev.appspot.com',
   messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || '000000000000',
   appId: import.meta.env.VITE_FIREBASE_APP_ID || '1:000000000000:web:0000000000000000',
 };
 
-console.log('[Firebase] Config mode:', isEmulator ? 'EMULATOR' : 'PRODUCTION');
+console.log('[Firebase] Config:', {
+  useFirestoreEmulator,
+  useAuthEmulator,
+  projectId: firebaseConfig.projectId,
+});
 
 // Initialize Firebase
 const firebaseApp = initializeApp(firebaseConfig);
@@ -49,42 +55,74 @@ const isEmulatorConnected = (): boolean => {
 };
 
 /**
- * Get the emulator hostname
- * Try localhost first (most direct), fall back to Codespaces subdomain if needed
+ * Get the Firestore emulator configuration for current environment
+ * In Codespaces and local dev, localhost with port forwarding works best
  */
-function getEmulatorAuthUrl(): string {
-  // Try localhost first - works when ports are port-forwarded
-  return 'http://localhost:9099';
+function getFirestoreEmulatorConfig(): { host: string; port: number } {
+  // Always use localhost - Codespaces port forwarding handles the rest
+  return { host: 'localhost', port: 8080 };
 }
 
-function getEmulatorFirestoreHost(): string {
-  // Use localhost for Firestore as well
-  return 'localhost';
+/**
+ * Get the Auth emulator configuration for current environment
+ * In Codespaces and local dev, localhost with port forwarding works best
+ */
+function getAuthEmulatorConfig(): { url: string } {
+  // Always use localhost - Codespaces port forwarding handles the rest
+  return { url: 'http://localhost:9099' };
 }
 
 /**
  * Connect to Firebase Emulator for local development
- * Called immediately after initialization
+ * Firestore and Auth emulators can be controlled independently
  */
 function initializeEmulator(): void {
-  if (isEmulator) {
-    try {
-      console.log('[Firebase] Connecting to emulator...');
-      const authUrl = getEmulatorAuthUrl();
-      const firestoreHost = getEmulatorFirestoreHost();
-      console.log('[Firebase] Auth URL:', authUrl, 'Firestore Host:', firestoreHost);
-      
-      connectAuthEmulator(auth, authUrl);
-      connectFirestoreEmulator(db, firestoreHost, 8080);
-      emulatorConnected = true;
-      console.log('[Firebase] ✓ Connected to emulator');
-    } catch (error) {
-      console.warn('[Firebase] Emulator connection failed, will use mocks:', error);
-      emulatorConnected = false;
+  try {
+    if (useAuthEmulator) {
+      console.log('[Firebase] Connecting to Auth emulator...');
+      const authConfig = getAuthEmulatorConfig();
+      connectAuthEmulator(auth, authConfig.url);
+      console.log('[Firebase] ✓ Connected to Auth emulator:', authConfig.url);
+    } else {
+      console.log('[Firebase] Using production Firebase Auth');
     }
-  } else {
-    console.log('[Firebase] Using production Firebase');
+
+    if (useFirestoreEmulator) {
+      console.log('[Firebase] Connecting to Firestore emulator...');
+      const fsConfig = getFirestoreEmulatorConfig();
+      connectFirestoreEmulator(db, fsConfig.host, fsConfig.port);
+      emulatorConnected = true;
+      console.log('[Firebase] ✓ Connected to Firestore emulator:', fsConfig.host, 'port:', fsConfig.port);
+    } else {
+      console.log('[Firebase] Using production Firebase Firestore');
+    }
+  } catch (error) {
+    console.warn('[Firebase] Emulator connection failed:', error);
+    emulatorConnected = false;
   }
+
+  // Setup Firebase auth state listener to sync with user service
+  setupAuthStateListener();
+}
+
+/**
+ * Setup auth state listener to keep user service in sync with Firebase auth
+ */
+function setupAuthStateListener(): void {
+  onAuthStateChanged(auth, (firebaseUser) => {
+    if (firebaseUser) {
+      // User logged in
+      setCurrentUser({
+        id: firebaseUser.uid,
+        email: firebaseUser.email || undefined,
+        displayName: firebaseUser.displayName || undefined,
+        provider: firebaseUser.isAnonymous ? 'anonymous' : 'google',
+      });
+    } else {
+      // User logged out
+      setCurrentUser(null);
+    }
+  });
 }
 
 // Initialize emulator immediately on module load

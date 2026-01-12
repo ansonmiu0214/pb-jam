@@ -2,38 +2,44 @@
 
 This todo.md is a thorough checklist to guide your implementation of the Spotify Race Playlist Visualizer MVP workflow. Includes local development, external systems, and LLM prompt usage.
 
+**UPDATED:** Project has been refactored to use React with Material-UI.
+
 ---
 
 ## Local Project Setup
 
-* [manual] Initialize git repository
-
-  * [manual] Run `git init` in project folder
-  * [manual] Add initial README.md
-* Install npm dependencies
-
-  * TypeScript
-  * ESLint + recommended plugins
-  * Vitest
-* Configure TypeScript
-
-  * Create `tsconfig.json` with ES Modules, strict mode
-* Configure ESLint
-
-  * `.eslintrc.json` with recommended rules
-* Configure Vitest
-
-  * `vitest.config.ts`
-* Setup folder structure
-
-  * `src/` with `managers/`, `ui/`, `services/`, `models/`
-  * `tests/`
-  * `index.html` and `styles.css`
-* Create empty module files
-
-  * `raceManager.ts`, `pacePlanManager.ts`, `playlistManager.ts`, `firebaseService.ts`, `timelineRenderer.ts`, `ui.ts`, `undoRedoManager.ts`
-  * `models/types.ts`
-* Run LLM prompts for initial project setup (Prompt 1.1 - 1.3)
+* [x] [manual] Initialize git repository
+  * [x] [manual] Run `git init` in project folder
+  * [x] [manual] Add initial README.md
+* [x] Install npm dependencies
+  * [x] TypeScript
+  * [x] ESLint + recommended plugins + React plugins
+  * [x] Vitest + React Testing Library + jsdom
+  * [x] React, ReactDOM, Material-UI, Emotion
+  * [x] Vite with React plugin
+* [x] Configure TypeScript
+  * [x] Create `tsconfig.json` with ES Modules, strict mode, JSX support
+* [x] Configure ESLint
+  * [x] `.eslintrc.json` with recommended rules + React/React Hooks support
+* [x] Configure Vitest
+  * [x] `vitest.config.ts` with jsdom environment and React plugin
+* [x] Setup folder structure
+  * [x] `src/` with `managers/`, `components/`, `services/`, `models/`, `theme/`
+  * [x] `tests/` with React component tests
+  * [x] `index.html` (React root)
+* [x] Create React components
+  * [x] `App.tsx` - Main application wrapper with authentication
+  * [x] `LoginScreen.tsx` - Material-UI login screen
+  * [x] `MainApp.tsx` - Main application layout with AppBar
+  * [x] `RaceSection.tsx` - Race management with Material-UI components
+  * [x] `PacePlanSection.tsx` - Pace plan management with Material-UI components
+  * [x] `ConfirmDialog.tsx` - Reusable confirmation dialog
+  * [x] `spotifyTheme.ts` - Custom Material-UI theme with Spotify styling
+* [x] Business logic modules (unchanged from vanilla version)
+  * [x] `raceManager.ts`, `pacePlanManager.ts`, `firebaseService.ts`
+  * [x] `models/types.ts`
+  * [ ] `playlistManager.ts`, `timelineRenderer.ts`, `undoRedoManager.ts` (pending)
+* [x] Run LLM prompts for React refactor
 
 ---
 
