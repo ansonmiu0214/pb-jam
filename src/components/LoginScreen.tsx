@@ -8,30 +8,59 @@ import {
   Card,
   CardContent,
   Stack,
+  Collapse,
 } from '@mui/material';
 import {
   Google as GoogleIcon,
   Person as PersonIcon,
   MusicNote as MusicNoteIcon,
+  BugReport as BugReportIcon,
 } from '@mui/icons-material';
 import {
   loginWithGoogle,
   loginAnonymously,
+  loginWithSpotify,
 } from '../services/firebaseService';
+import { SpotifyDebug } from './SpotifyDebug';
 
 export const LoginScreen: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [showDebug, setShowDebug] = useState(false);
+
+  const handleSpotifyLogin = async () => {
+    setError(null);
+    setShowDebug(false);
+    setLoading(true);
+    
+    try {
+      await loginWithSpotify();
+      // Clear any error and debug panel on successful login
+      setError(null);
+      setShowDebug(false);
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      console.error('Spotify login failed:', err);
+      setError(errorMessage || 'Spotify login failed. Please try again.');
+      setShowDebug(true);  // Show debug panel on error
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleGoogleLogin = async () => {
     setError(null);
+    setShowDebug(false);
     setLoading(true);
     
     try {
       await loginWithGoogle();
-    } catch (err: any) {
+      setError(null);
+      setShowDebug(false);
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : String(err);
       console.error('Google login failed:', err);
-      setError(err.message || 'Google login failed. Please try again.');
+      setError(errorMessage || 'Google login failed. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -39,13 +68,17 @@ export const LoginScreen: React.FC = () => {
 
   const handleAnonymousLogin = async () => {
     setError(null);
+    setShowDebug(false);
     setLoading(true);
     
     try {
       await loginAnonymously();
-    } catch (err: any) {
+      setError(null);
+      setShowDebug(false);
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : String(err);
       console.error('Anonymous login failed:', err);
-      setError(err.message || 'Anonymous login failed. Please try again.');
+      setError(errorMessage || 'Anonymous login failed. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -57,11 +90,19 @@ export const LoginScreen: React.FC = () => {
         sx={{
           minHeight: '100vh',
           display: 'flex',
+          flexDirection: 'column',
           alignItems: 'center',
           justifyContent: 'center',
           py: 4,
+          gap: 3,
         }}
       >
+        <Collapse in={showDebug} sx={{ width: '100%' }}>
+          <Box sx={{ mb: 2 }}>
+            <SpotifyDebug />
+          </Box>
+        </Collapse>
+        
         <Card
           sx={{
             width: '100%',
@@ -82,17 +123,21 @@ export const LoginScreen: React.FC = () => {
 
             <Stack spacing={2}>
               <Button
-                variant="outlined"
+                variant="contained"
                 size="large"
                 fullWidth
-                disabled
                 startIcon={<MusicNoteIcon />}
+                onClick={handleSpotifyLogin}
+                disabled={loading}
                 sx={{
                   py: 1.5,
-                  opacity: 0.5,
+                  bgcolor: '#1db954',
+                  '&:hover': {
+                    bgcolor: '#1aa34a',
+                  },
                 }}
               >
-                🎵 Login with Spotify (Coming Soon)
+                🎵 Login with Spotify
               </Button>
 
               <Button
@@ -125,6 +170,17 @@ export const LoginScreen: React.FC = () => {
                 {error}
               </Alert>
             )}
+
+            <Box sx={{ mt: 3, display: 'flex', justifyContent: 'center' }}>
+              <Button
+                size="small"
+                startIcon={<BugReportIcon />}
+                onClick={() => setShowDebug(!showDebug)}
+                sx={{ color: 'text.secondary' }}
+              >
+                {showDebug ? 'Hide' : 'Show'} Debug Info
+              </Button>
+            </Box>
           </CardContent>
         </Card>
       </Box>

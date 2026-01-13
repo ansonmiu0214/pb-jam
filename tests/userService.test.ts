@@ -1,10 +1,10 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { getCurrentUser, setCurrentUser, onUserChange, isUserLoggedIn, clearUser } from '../src/services/userService';
 
 describe('User Service', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     // Clear user state before each test
-    clearUser();
+    await clearUser();
   });
 
   describe('getCurrentUser', () => {
@@ -13,7 +13,7 @@ describe('User Service', () => {
       expect(user).toBeNull();
     });
 
-    it('should return the set user', () => {
+    it('should return the set user', async () => {
       const testUser = {
         id: 'user123',
         email: 'test@example.com',
@@ -21,7 +21,7 @@ describe('User Service', () => {
         provider: 'google' as const,
       };
 
-      setCurrentUser(testUser);
+      await setCurrentUser(testUser);
       const user = getCurrentUser();
 
       expect(user).toEqual(testUser);
@@ -29,27 +29,27 @@ describe('User Service', () => {
   });
 
   describe('setCurrentUser', () => {
-    it('should set the current user', () => {
+    it('should set the current user', async () => {
       const testUser = {
         id: 'user123',
         email: 'test@example.com',
         provider: 'google' as const,
       };
 
-      setCurrentUser(testUser);
+      await setCurrentUser(testUser);
       expect(getCurrentUser()).toEqual(testUser);
     });
 
-    it('should allow setting user to null', () => {
+    it('should allow setting user to null', async () => {
       const testUser = {
         id: 'user123',
         provider: 'anonymous' as const,
       };
 
-      setCurrentUser(testUser);
+      await setCurrentUser(testUser);
       expect(getCurrentUser()).not.toBeNull();
 
-      setCurrentUser(null);
+      await setCurrentUser(null);
       expect(getCurrentUser()).toBeNull();
     });
   });
@@ -59,32 +59,32 @@ describe('User Service', () => {
       expect(isUserLoggedIn()).toBe(false);
     });
 
-    it('should return true when a user is logged in', () => {
+    it('should return true when a user is logged in', async () => {
       const testUser = {
         id: 'user123',
         provider: 'google' as const,
       };
 
-      setCurrentUser(testUser);
+      await setCurrentUser(testUser);
       expect(isUserLoggedIn()).toBe(true);
     });
 
-    it('should return false after clearing user', () => {
+    it('should return false after clearing user', async () => {
       const testUser = {
         id: 'user123',
         provider: 'anonymous' as const,
       };
 
-      setCurrentUser(testUser);
+      await setCurrentUser(testUser);
       expect(isUserLoggedIn()).toBe(true);
 
-      clearUser();
+      await clearUser();
       expect(isUserLoggedIn()).toBe(false);
     });
   });
 
   describe('onUserChange', () => {
-    it('should call listener when user changes', () => {
+    it('should call listener when user changes', async () => {
       const listener = vi.fn();
       onUserChange(listener);
 
@@ -93,12 +93,12 @@ describe('User Service', () => {
         provider: 'google' as const,
       };
 
-      setCurrentUser(testUser);
+      await setCurrentUser(testUser);
 
       expect(listener).toHaveBeenCalledWith(testUser);
     });
 
-    it('should call listener with null on logout', () => {
+    it('should call listener with null on logout', async () => {
       const listener = vi.fn();
 
       const testUser = {
@@ -106,15 +106,15 @@ describe('User Service', () => {
         provider: 'anonymous' as const,
       };
 
-      setCurrentUser(testUser);
+      await setCurrentUser(testUser);
       onUserChange(listener);
 
-      clearUser();
+      await clearUser();
 
       expect(listener).toHaveBeenCalledWith(null);
     });
 
-    it('should return unsubscribe function', () => {
+    it('should return unsubscribe function', async () => {
       const listener = vi.fn();
       const unsubscribe = onUserChange(listener);
 
@@ -123,17 +123,17 @@ describe('User Service', () => {
         provider: 'google' as const,
       };
 
-      setCurrentUser(testUser);
+      await setCurrentUser(testUser);
       expect(listener).toHaveBeenCalledTimes(1);
 
       unsubscribe();
-      clearUser();
+      await clearUser();
 
       // Listener should not be called after unsubscribing
       expect(listener).toHaveBeenCalledTimes(1);
     });
 
-    it('should support multiple listeners', () => {
+    it('should support multiple listeners', async () => {
       const listener1 = vi.fn();
       const listener2 = vi.fn();
 
@@ -145,7 +145,7 @@ describe('User Service', () => {
         provider: 'google' as const,
       };
 
-      setCurrentUser(testUser);
+      await setCurrentUser(testUser);
 
       expect(listener1).toHaveBeenCalledWith(testUser);
       expect(listener2).toHaveBeenCalledWith(testUser);
@@ -153,20 +153,20 @@ describe('User Service', () => {
   });
 
   describe('clearUser', () => {
-    it('should clear the current user', () => {
+    it('should clear the current user', async () => {
       const testUser = {
         id: 'user123',
         provider: 'anonymous' as const,
       };
 
-      setCurrentUser(testUser);
+      await setCurrentUser(testUser);
       expect(getCurrentUser()).not.toBeNull();
 
-      clearUser();
+      await clearUser();
       expect(getCurrentUser()).toBeNull();
     });
 
-    it('should trigger user change listeners', () => {
+    it('should trigger user change listeners', async () => {
       const listener = vi.fn();
       onUserChange(listener);
 
@@ -175,17 +175,17 @@ describe('User Service', () => {
         provider: 'google' as const,
       };
 
-      setCurrentUser(testUser);
+      await setCurrentUser(testUser);
       listener.mockClear();
 
-      clearUser();
+      await clearUser();
 
       expect(listener).toHaveBeenCalledWith(null);
     });
   });
 
   describe('Different user providers', () => {
-    it('should store google provider user', () => {
+    it('should store google provider user', async () => {
       const googleUser = {
         id: 'google-123',
         email: 'user@gmail.com',
@@ -193,21 +193,21 @@ describe('User Service', () => {
         provider: 'google' as const,
       };
 
-      setCurrentUser(googleUser);
+      await setCurrentUser(googleUser);
       expect(getCurrentUser()).toEqual(googleUser);
     });
 
-    it('should store anonymous provider user', () => {
+    it('should store anonymous provider user', async () => {
       const anonUser = {
         id: 'anon-123',
         provider: 'anonymous' as const,
       };
 
-      setCurrentUser(anonUser);
+      await setCurrentUser(anonUser);
       expect(getCurrentUser()).toEqual(anonUser);
     });
 
-    it('should store spotify provider user', () => {
+    it('should store spotify provider user', async () => {
       const spotifyUser = {
         id: 'spotify-123',
         email: 'user@spotify.com',
@@ -215,7 +215,7 @@ describe('User Service', () => {
         provider: 'spotify' as const,
       };
 
-      setCurrentUser(spotifyUser);
+      await setCurrentUser(spotifyUser);
       expect(getCurrentUser()).toEqual(spotifyUser);
     });
   });

@@ -164,13 +164,21 @@ Test by creating a race and then a pace plan linked to it.
 ### Chunk 5: Spotify Playlist Integration (basic)
 
 ```text
-# Prompt 5.1: Connect to Spotify API
+# Prompt 5.1: Connect to Spotify API (COMPLETED)
 Implement Spotify authentication:
 - OAuth login via Spotify
 - Fetch user playlists after login
 - Cache playlists in memory for session
 Test fetching playlists and confirm display of playlist names.
 ```
+
+**Result:** Spotify authentication successfully implemented with:
+- OAuth login flow via popup window
+- Playlist fetching with pagination and caching
+- PlaylistDisplay React component
+- Updated LoginScreen with functional Spotify button
+- Comprehensive error handling and token refresh
+- Test cases for authentication and playlist management
 
 ```text
 # Prompt 5.2: Link pace plan to playlist
@@ -492,4 +500,28 @@ Requirements:
 - Touch-friendly hit targets
 - Momentum scrolling on timeline
 - No regressions on desktop
-````
+```
+
+### Chunk 15: Firestore Security Hardening
+
+```text
+# Prompt 15.1 — Strict Firestore security rules
+Harden Firestore security rules to validate userId field in documents.
+
+Current state:
+- Permissive rules: Allow all authenticated users to read/write under their path
+- No userId field validation in documents
+- Works but not secure
+
+Requirements:
+- Validate that every document has userId field matching the path userId
+- Revert to strict rules: allow read only if resource.data.userId == userId
+- Add migration script to add userId field to existing documents
+- Test that old documents are updated properly
+- Verify Spotify user persistence still works with strict rules
+
+Notes:
+- Some existing documents may be missing userId field
+- Migration may be needed before deploying strict rules
+- Or delete test data and recreate with proper userId field
+```

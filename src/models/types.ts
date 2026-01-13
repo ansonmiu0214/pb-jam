@@ -37,10 +37,11 @@ export interface Race {
   title: string;
   distance: number;
   unit: 'km' | 'mi';
+  raceDate?: Date; // Scheduled date of the race (independent from createdAt)
   tags: string[];
   pacePlans?: PacePlan[];
-  createdAt?: Date;
-  updatedAt?: Date;
+  createdAt?: Date; // When the race record was created
+  updatedAt?: Date; // When the race record was last modified
 }
 
 /**
@@ -52,6 +53,44 @@ export interface SpotifyTrack {
   artist: string;
   durationMs: number;
   uri: string;
+}
+
+/**
+ * Spotify playlist representation
+ */
+export interface SpotifyPlaylist {
+  id: string;
+  name: string;
+  description?: string;
+  tracks: {
+    total: number;
+  };
+  owner: {
+    id: string;
+    display_name: string;
+  };
+  images: Array<{
+    url: string;
+    height: number;
+    width: number;
+  }>;
+  external_urls: {
+    spotify: string;
+  };
+}
+
+/**
+ * Spotify user profile representation
+ */
+export interface SpotifyUserProfile {
+  id: string;
+  display_name: string;
+  email?: string;
+  images: Array<{
+    url: string;
+    height: number;
+    width: number;
+  }>;
 }
 
 /**
