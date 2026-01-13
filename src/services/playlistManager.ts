@@ -20,6 +20,8 @@ const getCryptoSubtle = () => {
 // Spotify API configuration
 const SPOTIFY_CLIENT_ID = import.meta.env.VITE_SPOTIFY_CLIENT_ID || '';
 const SPOTIFY_REDIRECT_URI = import.meta.env.VITE_SPOTIFY_REDIRECT_URI || window.location.origin;
+console.log(`SPOTIFY_REDIRECT_URI: ${SPOTIFY_REDIRECT_URI}`);
+
 const SPOTIFY_AUTH_URL = 'https://accounts.spotify.com/authorize';
 const SPOTIFY_API_BASE = 'https://api.spotify.com/v1';
 
