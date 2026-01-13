@@ -103,9 +103,10 @@ Race {
   title: string,
   distance: number,
   unit: "km" | "miles",
+  raceDate?: timestamp,  // Scheduled date of the race (independent from createdAt)
   tags: string[],
-  createdAt?: timestamp,
-  updatedAt?: timestamp,
+  createdAt?: timestamp,  // When the race record was created
+  updatedAt?: timestamp,  // When the race record was last modified
   pacePlans: { [id: string]: PacePlan }
 }
 

@@ -500,4 +500,28 @@ Requirements:
 - Touch-friendly hit targets
 - Momentum scrolling on timeline
 - No regressions on desktop
-````
+```
+
+### Chunk 15: Firestore Security Hardening
+
+```text
+# Prompt 15.1 — Strict Firestore security rules
+Harden Firestore security rules to validate userId field in documents.
+
+Current state:
+- Permissive rules: Allow all authenticated users to read/write under their path
+- No userId field validation in documents
+- Works but not secure
+
+Requirements:
+- Validate that every document has userId field matching the path userId
+- Revert to strict rules: allow read only if resource.data.userId == userId
+- Add migration script to add userId field to existing documents
+- Test that old documents are updated properly
+- Verify Spotify user persistence still works with strict rules
+
+Notes:
+- Some existing documents may be missing userId field
+- Migration may be needed before deploying strict rules
+- Or delete test data and recreate with proper userId field
+```
