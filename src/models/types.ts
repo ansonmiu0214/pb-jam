@@ -37,10 +37,11 @@ export interface Race {
   title: string;
   distance: number;
   unit: 'km' | 'mi';
+  raceDate?: Date; // Scheduled date of the race (independent from createdAt)
   tags: string[];
   pacePlans?: PacePlan[];
-  createdAt?: Date;
-  updatedAt?: Date;
+  createdAt?: Date; // When the race record was created
+  updatedAt?: Date; // When the race record was last modified
 }
 
 /**

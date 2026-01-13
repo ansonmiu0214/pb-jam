@@ -8,11 +8,13 @@ import {
   Card,
   CardContent,
   Stack,
+  Collapse,
 } from '@mui/material';
 import {
   Google as GoogleIcon,
   Person as PersonIcon,
   MusicNote as MusicNoteIcon,
+  BugReport as BugReportIcon,
 } from '@mui/icons-material';
 import {
   loginWithGoogle,
@@ -24,17 +26,23 @@ import { SpotifyDebug } from './SpotifyDebug';
 export const LoginScreen: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [showDebug, setShowDebug] = useState(false);
 
   const handleSpotifyLogin = async () => {
     setError(null);
+    setShowDebug(false);
     setLoading(true);
     
     try {
       await loginWithSpotify();
+      // Clear any error and debug panel on successful login
+      setError(null);
+      setShowDebug(false);
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : String(err);
       console.error('Spotify login failed:', err);
       setError(errorMessage || 'Spotify login failed. Please try again.');
+      setShowDebug(true);  // Show debug panel on error
     } finally {
       setLoading(false);
     }
@@ -42,10 +50,13 @@ export const LoginScreen: React.FC = () => {
 
   const handleGoogleLogin = async () => {
     setError(null);
+    setShowDebug(false);
     setLoading(true);
     
     try {
       await loginWithGoogle();
+      setError(null);
+      setShowDebug(false);
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : String(err);
       console.error('Google login failed:', err);
@@ -57,10 +68,13 @@ export const LoginScreen: React.FC = () => {
 
   const handleAnonymousLogin = async () => {
     setError(null);
+    setShowDebug(false);
     setLoading(true);
     
     try {
       await loginAnonymously();
+      setError(null);
+      setShowDebug(false);
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : String(err);
       console.error('Anonymous login failed:', err);
@@ -83,9 +97,11 @@ export const LoginScreen: React.FC = () => {
           gap: 3,
         }}
       >
-        <Box sx={{ width: '100%' }}>
-          <SpotifyDebug />
-        </Box>
+        <Collapse in={showDebug} sx={{ width: '100%' }}>
+          <Box sx={{ mb: 2 }}>
+            <SpotifyDebug />
+          </Box>
+        </Collapse>
         
         <Card
           sx={{
@@ -154,6 +170,17 @@ export const LoginScreen: React.FC = () => {
                 {error}
               </Alert>
             )}
+
+            <Box sx={{ mt: 3, display: 'flex', justifyContent: 'center' }}>
+              <Button
+                size="small"
+                startIcon={<BugReportIcon />}
+                onClick={() => setShowDebug(!showDebug)}
+                sx={{ color: 'text.secondary' }}
+              >
+                {showDebug ? 'Hide' : 'Show'} Debug Info
+              </Button>
+            </Box>
           </CardContent>
         </Card>
       </Box>

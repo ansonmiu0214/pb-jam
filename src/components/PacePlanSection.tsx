@@ -29,7 +29,9 @@ import type { Race, PacePlan } from '../models/types';
 interface PacePlanFormData {
   raceId: string;
   title: string;
-  targetTime: string;
+  targetTimeHours: string;
+  targetTimeMinutes: string;
+  targetTimeSeconds: string;
 }
 
 export interface PacePlanSectionHandle {
@@ -48,7 +50,9 @@ export const PacePlanSection = forwardRef<PacePlanSectionHandle>((_, ref) => {
   const [formData, setPacePlanFormData] = useState<PacePlanFormData>({
     raceId: '',
     title: '',
-    targetTime: '',
+    targetTimeHours: '',
+    targetTimeMinutes: '',
+    targetTimeSeconds: '',
   });
 
   useEffect(() => {
@@ -108,14 +112,19 @@ export const PacePlanSection = forwardRef<PacePlanSectionHandle>((_, ref) => {
     const user = getCurrentUser();
     if (!user) return;
 
-    if (!formData.raceId || !formData.title.trim() || !formData.targetTime.trim()) {
+    if (!formData.raceId || !formData.title.trim()) {
       setError('Please fill in all fields.');
       return;
     }
 
-    const targetTimeSeconds = parseInt(formData.targetTime);
-    if (isNaN(targetTimeSeconds) || targetTimeSeconds <= 0) {
-      setError('Please enter a valid target time in seconds.');
+    // Convert hours, minutes, seconds to total seconds
+    const hours = parseInt(formData.targetTimeHours) || 0;
+    const minutes = parseInt(formData.targetTimeMinutes) || 0;
+    const seconds = parseInt(formData.targetTimeSeconds) || 0;
+    const totalSeconds = hours * 3600 + minutes * 60 + seconds;
+
+    if (totalSeconds <= 0) {
+      setError('Please enter a valid target time (at least 1 second).');
       return;
     }
 
@@ -125,11 +134,11 @@ export const PacePlanSection = forwardRef<PacePlanSectionHandle>((_, ref) => {
     try {
       await createPacePlan(formData.raceId, {
         title: formData.title.trim(),
-        targetTime: targetTimeSeconds,
+        targetTime: totalSeconds,
       });
 
       // Reset form
-      setPacePlanFormData({ raceId: '', title: '', targetTime: '' });
+      setPacePlanFormData({ raceId: '', title: '', targetTimeHours: '', targetTimeMinutes: '', targetTimeSeconds: '' });
       
       // Reload pace plans for the selected race
       if (selectedRaceId) {
@@ -252,16 +261,36 @@ export const PacePlanSection = forwardRef<PacePlanSectionHandle>((_, ref) => {
                 disabled={submitting}
               />
 
-              <TextField
-                label="Target Time (seconds)"
-                placeholder="Target time in seconds"
-                type="number"
-                value={formData.targetTime}
-                onChange={handleInputChange('targetTime')}
-                fullWidth
-                disabled={submitting}
-                helperText="Enter the total target time in seconds (e.g., 10800 for 3 hours)"
-              />
+              <Typography variant="body2" sx={{ mt: 1, mb: 1 }}>Target Time</Typography>
+              <Stack direction="row" spacing={1}>
+                <TextField
+                  label="Hours"
+                  type="number"
+                  value={formData.targetTimeHours}
+                  onChange={handleInputChange('targetTimeHours')}
+                  disabled={submitting}
+                  inputProps={{ min: '0', max: '23' }}
+                  sx={{ flex: 1 }}
+                />
+                <TextField
+                  label="Minutes"
+                  type="number"
+                  value={formData.targetTimeMinutes}
+                  onChange={handleInputChange('targetTimeMinutes')}
+                  disabled={submitting}
+                  inputProps={{ min: '0', max: '59' }}
+                  sx={{ flex: 1 }}
+                />
+                <TextField
+                  label="Seconds"
+                  type="number"
+                  value={formData.targetTimeSeconds}
+                  onChange={handleInputChange('targetTimeSeconds')}
+                  disabled={submitting}
+                  inputProps={{ min: '0', max: '59' }}
+                  sx={{ flex: 1 }}
+                />
+              </Stack>
 
               <Button
                 type="submit"

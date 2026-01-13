@@ -17,7 +17,6 @@ import {
 import { RaceSection } from './RaceSection';
 import { PacePlanSection, type PacePlanSectionHandle } from './PacePlanSection';
 import { PlaylistDisplay } from './PlaylistDisplay';
-import { SpotifyDebug } from './SpotifyDebug';
 import {
   getCurrentUser,
   onUserChange,
@@ -52,6 +51,11 @@ export const MainApp: React.FC = () => {
 
   const handleRaceCreated = () => {
     // Refresh the races list in PacePlanSection when a race is created
+    pacePlanSectionRef.current?.refreshRaces();
+  };
+
+  const handleRaceDeleted = () => {
+    // Refresh the races list in PacePlanSection when a race is deleted
     pacePlanSectionRef.current?.refreshRaces();
   };
 
@@ -108,11 +112,8 @@ export const MainApp: React.FC = () => {
 
       <Container maxWidth="lg" sx={{ mt: 4, pb: 4 }}>
         <Grid container spacing={4}>
-          <Grid item xs={12}>
-            <SpotifyDebug />
-          </Grid>
           <Grid item xs={12} md={6}>
-            <RaceSection onRaceCreated={handleRaceCreated} />
+            <RaceSection onRaceCreated={handleRaceCreated} onRaceDeleted={handleRaceDeleted} />
           </Grid>
           <Grid item xs={12} md={6}>
             <PacePlanSection ref={pacePlanSectionRef} />

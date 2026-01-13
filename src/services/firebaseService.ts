@@ -109,22 +109,36 @@ function initializeEmulator(): void {
  * Setup auth state listener to keep user service in sync with Firebase auth
  */
 function setupAuthStateListener(): void {
-  onAuthStateChanged(auth, async (firebaseUser) => {
+  onAuthStateChanged(auth, async (firebaseAuthUser) => {
     try {
-      if (firebaseUser) {
-        // User logged in
-        await setCurrentUser({
-          id: firebaseUser.uid,
-          email: firebaseUser.email || undefined,
-          displayName: firebaseUser.displayName || undefined,
-          provider: firebaseUser.isAnonymous ? 'anonymous' : 'google',
-        });
+      if (firebaseAuthUser) {
+        // Firebase user logged in
+        // Only update currentUser if it's not a Spotify user (Spotify users manage their own state)
+        const { getCurrentUser } = await import('./userService');
+        const currentUser = getCurrentUser();
+        
+        // If there's no currentUser yet, or the currentUser provider is not 'spotify', 
+        // sync with Firebase auth state
+        if (!currentUser || currentUser.provider !== 'spotify') {
+          await setCurrentUser({
+            id: firebaseAuthUser.uid,
+            email: firebaseAuthUser.email || undefined,
+            displayName: firebaseAuthUser.displayName || undefined,
+            provider: firebaseAuthUser.isAnonymous ? 'anonymous' : 'google',
+          });
+        }
       } else {
-        // User logged out
-        await setCurrentUser(null);
+        // Firebase user logged out
+        const { getCurrentUser } = await import('./userService');
+        const currentUser = getCurrentUser();
+        
+        // Only clear currentUser if it's not a Spotify user
+        if (!currentUser || currentUser.provider !== 'spotify') {
+          await setCurrentUser(null);
+        }
       }
     } catch (error) {
-      console.error('[Firebase] Error setting current user:', error);
+      console.error('[Firebase] Error in auth state listener:', error);
     }
   });
 }
@@ -172,9 +186,16 @@ export async function loginWithSpotify(): Promise<void> {
     // Handle the callback and get user profile
     const userProfile = await handleSpotifyCallback(authResult.code);
     
-    // Set user in user service
+    // Ensure we have a Firebase UID for Firestore security rules validation
+    // Sign in anonymously if not already authenticated
+    if (!auth.currentUser) {
+      await signInAnonymously(auth);
+    }
+    
+    // Set user in user service with Spotify ID (ensures persistence across logins)
+    // The Spotify ID will be used as the Firestore document path
     await setCurrentUser({
-      id: userProfile.id,
+      id: userProfile.id,  // Use Spotify ID for persistent data storage
       email: userProfile.email || undefined,
       displayName: userProfile.display_name || undefined,
       provider: 'spotify',

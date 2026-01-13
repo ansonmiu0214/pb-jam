@@ -87,10 +87,14 @@ export async function setCurrentUser(user: CurrentUser | null): Promise<void> {
 }
 
 /**
- * Get the user ID for Firestore operations (uses Firebase UID)
+ * Get the user ID for Firestore operations
+ * Returns the application user ID (Spotify ID for Spotify users, Firebase UID for others)
+ * This ensures data persistence across login sessions
  */
 export function getUserId(): string | null {
-  return firebaseUser?.uid || null;
+  const userId = currentUser?.id || null;
+  console.log('[UserService] getUserId called - currentUser:', currentUser ? `${currentUser.id} (${currentUser.provider})` : null, 'firebaseUser:', firebaseUser?.uid || null);
+  return userId;
 }
 
 /**

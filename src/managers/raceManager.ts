@@ -18,12 +18,12 @@ function getRacesCollectionName(): string {
 // Support two signatures for compatibility across UI and tests:
 // createRace(userId, raceData) and createRace(raceData) which uses current user
 export async function createRace(
-  userIdOrData: string | { title: string; distance: number; unit: 'km' | 'mi' },
-  maybeData?: { title: string; distance: number; unit: 'km' | 'mi' }
+  userIdOrData: string | { title: string; distance: number; unit: 'km' | 'mi'; raceDate?: Date },
+  maybeData?: { title: string; distance: number; unit: 'km' | 'mi'; raceDate?: Date }
 ): Promise<Race> {
   const isUserProvided = typeof userIdOrData === 'string';
   const userId = isUserProvided ? (userIdOrData as string) : getUserId();
-  const data = isUserProvided ? maybeData! : (userIdOrData as { title: string; distance: number; unit: 'km' | 'mi' });
+  const data = isUserProvided ? maybeData! : (userIdOrData as { title: string; distance: number; unit: 'km' | 'mi'; raceDate?: Date });
 
   if (!userId) {
     throw new Error('User must be authenticated to create races');
@@ -34,6 +34,7 @@ export async function createRace(
     title: data.title,
     distance: data.distance,
     unit: data.unit,
+    ...(data.raceDate && { raceDate: data.raceDate }),
     tags: [],
     createdAt: new Date(),
     updatedAt: new Date(),
@@ -58,27 +59,36 @@ export async function fetchRaces(userId?: string): Promise<Race[]> {
     throw new Error('User must be authenticated to fetch races');
   }
 
+  console.log('[RaceManager] Fetching races for user:', uid);
   const racesCollection = collection(db, 'users', uid, getRacesCollectionName());
-  const querySnapshot = await getDocs(racesCollection);
+  console.log('[RaceManager] Collection path:', `users/${uid}/${getRacesCollectionName()}`);
+  
+  try {
+    const querySnapshot = await getDocs(racesCollection);
+    console.log('[RaceManager] Query successful, documents:', querySnapshot.size);
 
-  const races: Race[] = [];
-  querySnapshot.forEach((d) => {
-    const data = d.data();
-    races.push({
-      id: d.id,
-      userId: data.userId,
-      title: data.title,
-      distance: data.distance,
-      unit: data.unit,
-      tags: data.tags || [],
-      pacePlans: data.pacePlans,
-      createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : data.createdAt,
-      updatedAt: data.updatedAt?.toDate ? data.updatedAt.toDate() : data.updatedAt,
-    } as Race);
-  });
+    const races: Race[] = [];
+    querySnapshot.forEach((d) => {
+      const data = d.data();
+      races.push({
+        id: d.id,
+        userId: data.userId,
+        title: data.title,
+        distance: data.distance,
+        unit: data.unit,
+        tags: data.tags || [],
+        pacePlans: data.pacePlans,
+        createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : data.createdAt,
+        updatedAt: data.updatedAt?.toDate ? data.updatedAt.toDate() : data.updatedAt,
+      } as Race);
+    });
 
-  console.log(`[RaceManager] Fetched ${races.length} races for user ${uid}`);
-  return races;
+    console.log(`[RaceManager] Fetched ${races.length} races for user ${uid}`);
+    return races;
+  } catch (error) {
+    console.error('[RaceManager] Error fetching races:', error);
+    throw error;
+  }
 }
 
 // deleteRace(raceId) or deleteRace(userId, raceId)

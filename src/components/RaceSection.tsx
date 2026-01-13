@@ -20,6 +20,7 @@ import {
   Add as AddIcon,
 } from '@mui/icons-material';
 import { createRace, fetchRaces, deleteRace } from '../managers/raceManager';
+import { fetchPacePlans, deletePacePlan } from '../managers/pacePlanManager';
 import { getCurrentUser } from '../services/userService';
 import { ConfirmDialog } from './ConfirmDialog';
 import type { Race } from '../models/types';
@@ -28,23 +29,32 @@ interface RaceFormData {
   title: string;
   distance: string;
   unit: 'km' | 'mi';
+  raceDate: string; // ISO date string (YYYY-MM-DD)
 }
 
 interface RaceSectionProps {
   onRaceCreated?: () => void;
+  onRaceDeleted?: () => void;
 }
 
-export const RaceSection: React.FC<RaceSectionProps> = ({ onRaceCreated }) => {
+export const RaceSection: React.FC<RaceSectionProps> = ({ onRaceCreated, onRaceDeleted }) => {
   const [races, setRaces] = useState<Race[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [raceToDelete, setRaceToDelete] = useState<Race | null>(null);
-  const [formData, setFormData] = useState<RaceFormData>({
-    title: '',
-    distance: '',
-    unit: 'km',
+  const [pacePlanCountToDelete, setPacePlanCountToDelete] = useState<number>(0);
+  const [formData, setFormData] = useState<RaceFormData>(() => {
+    // Initialize with today's date in YYYY-MM-DD format
+    const today = new Date();
+    const dateString = today.toISOString().split('T')[0];
+    return {
+      title: '',
+      distance: '',
+      unit: 'km',
+      raceDate: dateString,
+    };
   });
 
   useEffect(() => {
@@ -117,12 +127,15 @@ export const RaceSection: React.FC<RaceSectionProps> = ({ onRaceCreated }) => {
         title: formData.title.trim(),
         distance,
         unit: formData.unit,
+        raceDate: new Date(formData.raceDate),
       });
       console.log('[RaceSection] Race created successfully:', result);
 
       // Reset form
       console.log('[RaceSection] Resetting form');
-      setFormData({ title: '', distance: '', unit: 'km' });
+      const today = new Date();
+      const dateString = today.toISOString().split('T')[0];
+      setFormData({ title: '', distance: '', unit: 'km', raceDate: dateString });
       
       // Reload races
       console.log('[RaceSection] Loading races');
@@ -143,6 +156,13 @@ export const RaceSection: React.FC<RaceSectionProps> = ({ onRaceCreated }) => {
   };
 
   const handleDelete = async (race: Race) => {
+    try {
+      const pacePlans = await fetchPacePlans(race.id);
+      setPacePlanCountToDelete(pacePlans.length);
+    } catch (err) {
+      console.error('Failed to fetch pace plans:', err);
+      setPacePlanCountToDelete(0);
+    }
     setRaceToDelete(race);
     setDeleteDialogOpen(true);
   };
@@ -151,14 +171,29 @@ export const RaceSection: React.FC<RaceSectionProps> = ({ onRaceCreated }) => {
     if (!raceToDelete) return;
 
     try {
+      // First, delete all pace plans for this race
+      if (pacePlanCountToDelete > 0) {
+        const pacePlans = await fetchPacePlans(raceToDelete.id);
+        for (const pacePlan of pacePlans) {
+          await deletePacePlan(pacePlan.id);
+        }
+      }
+      
+      // Then delete the race
       await deleteRace(raceToDelete.id);
       await loadRaces();
+      
+      // Notify parent that a race was deleted
+      if (onRaceDeleted) {
+        onRaceDeleted();
+      }
     } catch (err: unknown) {
       console.error('Failed to delete race:', err);
       setError('Failed to delete race. Please try again.');
     } finally {
       setDeleteDialogOpen(false);
       setRaceToDelete(null);
+      setPacePlanCountToDelete(0);
     }
   };
 
@@ -225,6 +260,16 @@ export const RaceSection: React.FC<RaceSectionProps> = ({ onRaceCreated }) => {
                   <MenuItem value="mi">Miles (mi)</MenuItem>
                 </Select>
               </FormControl>
+
+              <TextField
+                label="Race Date"
+                type="date"
+                value={formData.raceDate}
+                onChange={handleInputChange('raceDate')}
+                InputLabelProps={{ shrink: true }}
+                fullWidth
+                disabled={submitting}
+              />
 
               <Button
                 type="submit"
@@ -298,7 +343,7 @@ export const RaceSection: React.FC<RaceSectionProps> = ({ onRaceCreated }) => {
       <ConfirmDialog
         open={deleteDialogOpen}
         title="Delete Race"
-        message={`Are you sure you want to delete "${raceToDelete?.title}"? This action cannot be undone.`}
+        message={`Are you sure you want to delete "${raceToDelete?.title}"?${pacePlanCountToDelete > 0 ? ` This will also delete ${pacePlanCountToDelete} pace plan${pacePlanCountToDelete === 1 ? '' : 's'}.` : ''} This action cannot be undone.`}
         onConfirm={confirmDelete}
         onCancel={cancelDelete}
         confirmText="Delete"
