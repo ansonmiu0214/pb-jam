@@ -73,9 +73,10 @@ export const PacePlanSection = forwardRef<PacePlanSectionHandle>((_, ref) => {
   }, [selectedRaceId]);
 
   // Reload playlists when Spotify authentication status might have changed
+  const spotifyAuthStatus = isSpotifyAuthenticated();
   useEffect(() => {
     loadPlaylists();
-  }, [isSpotifyAuthenticated()]);
+  }, [spotifyAuthStatus]);
 
   // Expose refreshRaces to parent components via ref
   useImperativeHandle(ref, () => ({
