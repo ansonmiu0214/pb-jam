@@ -24,7 +24,7 @@ import { createPacePlan, fetchPacePlans, deletePacePlan } from '../managers/pace
 import { fetchRaces } from '../managers/raceManager';
 import { getCurrentUser } from '../services/userService';
 import { ConfirmDialog } from './ConfirmDialog';
-import type { Race, PacePlan, SpotifyPlaylist } from '../models/types';
+import type { Race, PacePlan, SpotifyPlaylist, SpotifyTrack } from '../models/types';
 import { getCachedPlaylists, isSpotifyAuthenticated, fetchPlaylists } from '../services/playlistManager';
 
 interface PacePlanFormData {
@@ -40,7 +40,13 @@ export interface PacePlanSectionHandle {
   refreshRaces: () => Promise<void>;
 }
 
-export const PacePlanSection = forwardRef<PacePlanSectionHandle>((_, ref) => {
+interface PacePlanSectionProps {
+  onPacePlanSelect?: (pacePlan: PacePlan | null) => void;
+  onTracksLoad?: (tracks: SpotifyTrack[]) => void;
+}
+
+export const PacePlanSection = forwardRef<PacePlanSectionHandle, PacePlanSectionProps>(
+  ({ onPacePlanSelect, onTracksLoad }, ref) => {
   const [races, setRaces] = useState<Race[]>([]);
   const [pacePlans, setPacePlans] = useState<PacePlan[]>([]);
   const [playlists, setPlaylists] = useState<SpotifyPlaylist[]>([]);
@@ -186,6 +192,15 @@ export const PacePlanSection = forwardRef<PacePlanSectionHandle>((_, ref) => {
   const handleDelete = async (pacePlan: PacePlan) => {
     setPacePlanToDelete(pacePlan);
     setDeleteDialogOpen(true);
+  };
+
+  const handleSelectPacePlan = (pacePlan: PacePlan) => {
+    // Call the parent callback to select this pace plan
+    onPacePlanSelect?.(pacePlan);
+    
+    // Note: Tracks would need to be fetched from the Spotify API using the playlist ID
+    // For now, just clear tracks - they can be fetched on-demand in a future enhancement
+    onTracksLoad?.([]);
   };
 
   const confirmDelete = async () => {
@@ -429,7 +444,18 @@ export const PacePlanSection = forwardRef<PacePlanSectionHandle>((_, ref) => {
       ) : (
         <Stack spacing={2}>
           {pacePlans.map((pacePlan) => (
-            <Card key={pacePlan.id}>
+            <Card 
+              key={pacePlan.id}
+              onClick={() => handleSelectPacePlan(pacePlan)}
+              sx={{ 
+                cursor: 'pointer',
+                transition: 'all 0.2s',
+                '&:hover': {
+                  boxShadow: 4,
+                  transform: 'translateY(-2px)',
+                }
+              }}
+            >
               <CardContent>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start' }}>
                   <Box>
@@ -449,7 +475,10 @@ export const PacePlanSection = forwardRef<PacePlanSectionHandle>((_, ref) => {
                     )}
                   </Box>
                   <IconButton
-                    onClick={() => handleDelete(pacePlan)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDelete(pacePlan);
+                    }}
                     color="error"
                     size="small"
                   >
