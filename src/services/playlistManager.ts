@@ -5,6 +5,18 @@
 
 import { SpotifyPlaylist, SpotifyUserProfile } from '../models/types';
 
+// Get crypto.subtle for PKCE code challenge generation
+// Works in browser and Node.js 18+
+const getCryptoSubtle = () => {
+  // Try global crypto first (browser or Node 20+)
+  if (typeof globalThis !== 'undefined' && globalThis.crypto?.subtle) {
+    return globalThis.crypto.subtle;
+  }
+  // For Node 18, use dynamic import as fallback in tests
+  // In production (browser), globalThis.crypto.subtle will be available
+  return globalThis.crypto?.subtle;
+};
+
 // Spotify API configuration
 const SPOTIFY_CLIENT_ID = import.meta.env.VITE_SPOTIFY_CLIENT_ID || '';
 const SPOTIFY_REDIRECT_URI = import.meta.env.VITE_SPOTIFY_REDIRECT_URI || window.location.origin;
@@ -313,9 +325,13 @@ function generateCodeVerifier(): string {
  * Generate PKCE code challenge
  */
 async function generateCodeChallenge(verifier: string): Promise<string> {
+  const subtle = getCryptoSubtle();
+  if (!subtle) {
+    throw new Error('crypto.subtle is not available in this environment');
+  }
   const encoder = new TextEncoder();
   const data = encoder.encode(verifier);
-  const digest = await crypto.subtle.digest('SHA-256', data);
+  const digest = await subtle.digest('SHA-256', data);
   return base64URLEncode(new Uint8Array(digest));
 }
 

@@ -1,6 +1,16 @@
 import '@testing-library/jest-dom';
 import { vi } from 'vitest';
 
+// Polyfill crypto.subtle for Node 18 compatibility
+if (!globalThis.crypto?.subtle) {
+  const { webcrypto } = require('crypto');
+  Object.defineProperty(globalThis, 'crypto', {
+    value: webcrypto,
+    writable: true,
+    configurable: true,
+  });
+}
+
 // Mock global confirm function for tests
 global.confirm = vi.fn(() => true);
 
