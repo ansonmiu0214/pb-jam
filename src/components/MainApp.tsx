@@ -122,7 +122,7 @@ export const MainApp: React.FC = () => {
             <PacePlanSection ref={pacePlanSectionRef} onPacePlanSelect={setSelectedPacePlan} onTracksLoad={setSelectedTracks} />
           </Grid>
           <Grid item xs={12}>
-            <TimelineCanvas pacePlan={selectedPacePlan} tracks={selectedTracks} />
+            <TimelineCanvas pacePlan={selectedPacePlan || undefined} tracks={selectedTracks} />
           </Grid>
           <Grid item xs={12}>
             <PlaylistDisplay onPlaylistSelect={(playlist) => {
