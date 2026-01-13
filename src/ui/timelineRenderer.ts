@@ -142,7 +142,7 @@ function drawRaceSplits(
   const splitX = drawArea.x + 60; // Start after time axis and labels
   const splitWidth = 120; // Fixed width for split rectangles
 
-  data.splits.forEach((split, index) => {
+  data.splits.forEach((split, _index) => {
     const splitHeight = (split.targetTime / data.totalTime) * drawArea.height;
     const y = drawArea.y + (currentTime / data.totalTime) * drawArea.height;
 
@@ -191,7 +191,7 @@ function drawSongTracks(
   const trackX = drawArea.x + 60 + 120 + 10; // Start after splits with some padding
   const trackWidth = 150; // Fixed width for track rectangles
 
-  data.tracks!.forEach((track, index) => {
+  data.tracks!.forEach((track, _index) => {
     const trackDurationSeconds = track.durationMs / 1000;
     const trackHeight = (trackDurationSeconds / data.totalTime) * drawArea.height;
     const y = drawArea.y + (currentTime / data.totalTime) * drawArea.height;
