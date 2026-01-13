@@ -3,7 +3,7 @@
  * Stores and manages current user information with Firebase Authentication integration
  */
 import { auth } from './firebaseService';
-import { signInAnonymously, signOut, User } from 'firebase/auth';
+import { signInAnonymously, signOut, User, onAuthStateChanged } from 'firebase/auth';
 
 interface CurrentUser {
   id: string;
@@ -15,16 +15,25 @@ interface CurrentUser {
 let currentUser: CurrentUser | null = null;
 let firebaseUser: User | null = null;
 const userChangeListeners: Array<(user: CurrentUser | null) => void> = [];
+let authListenerInitialized = false;
 
-// Listen to Firebase Auth state changes
-auth.onAuthStateChanged((user) => {
-  firebaseUser = user;
-  if (!user && currentUser) {
-    // Firebase user is gone but we still have a current user, clear it
-    currentUser = null;
-    notifyUserChangeListeners();
-  }
-});
+/**
+ * Initialize the Firebase Auth state listener
+ * This is deferred to avoid circular dependency issues
+ */
+function initializeAuthListener(): void {
+  if (authListenerInitialized) return;
+  authListenerInitialized = true;
+
+  onAuthStateChanged(auth, (user) => {
+    firebaseUser = user;
+    if (!user && currentUser) {
+      // Firebase user is gone but we still have a current user, clear it
+      currentUser = null;
+      notifyUserChangeListeners();
+    }
+  });
+}
 
 /**
  * Get the currently authenticated user
@@ -44,6 +53,8 @@ export function getFirebaseUser(): User | null {
  * Set the current authenticated user and ensure Firebase Auth
  */
 export async function setCurrentUser(user: CurrentUser | null): Promise<void> {
+  initializeAuthListener();
+
   if (user) {
     // If setting a user, ensure we're signed into Firebase
     if (!firebaseUser) {
@@ -86,6 +97,8 @@ export function getUserId(): string | null {
  * Subscribe to user state changes
  */
 export function onUserChange(listener: (user: CurrentUser | null) => void): () => void {
+  initializeAuthListener();
+
   userChangeListeners.push(listener);
   // Return unsubscribe function
   return () => {

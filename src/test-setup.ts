@@ -8,9 +8,12 @@ global.confirm = vi.fn(() => true);
 vi.mock('firebase/auth', () => ({
   initializeApp: vi.fn(),
   getAuth: vi.fn(() => ({
-    onAuthStateChanged: vi.fn(() => vi.fn()),
     currentUser: null,
   })),
+  onAuthStateChanged: vi.fn((_auth, _callback) => {
+    // Return unsubscribe function
+    return vi.fn()
+  }),
   signInAnonymously: vi.fn(() => Promise.resolve({
     user: {
       uid: 'test-firebase-uid',
