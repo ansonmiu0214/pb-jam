@@ -3,6 +3,7 @@ import { vi } from 'vitest';
 
 // Polyfill crypto.subtle for Node 18 compatibility
 if (!globalThis.crypto?.subtle) {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
   const { webcrypto } = require('crypto');
   Object.defineProperty(globalThis, 'crypto', {
     value: webcrypto,
