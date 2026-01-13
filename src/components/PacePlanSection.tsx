@@ -274,6 +274,14 @@ export const PacePlanSection = forwardRef<PacePlanSectionHandle, PacePlanSection
     return playlist ? playlist.name : 'Unknown Playlist';
   };
 
+  const getRaceDate = (raceId: string): string => {
+    const race = races.find(r => r.id === raceId);
+    if (race?.raceDate) {
+      return new Date(race.raceDate).toLocaleDateString();
+    }
+    return 'TBD';
+  };
+
   // Split editing functions
   const handleEditSplits = (pacePlan: PacePlan) => {
     if (expandedPacePlan === pacePlan.id) {
@@ -585,7 +593,7 @@ export const PacePlanSection = forwardRef<PacePlanSectionHandle, PacePlanSection
                       Target Time: {formatTime(pacePlan.targetTime)}
                     </Typography>
                     <Typography variant="body2" color="text.secondary">
-                      Splits: {pacePlan.splits.length} • Created: {pacePlan.createdAt?.toLocaleDateString() || 'N/A'}
+                      Splits: {pacePlan.splits.length} • Race Date: {getRaceDate(pacePlan.raceId)}
                     </Typography>
                     {pacePlan.spotifyPlaylistId && (
                       <Typography variant="body2" color="primary">
