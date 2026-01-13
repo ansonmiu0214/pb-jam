@@ -102,10 +102,10 @@ This todo.md is a thorough checklist to guide your implementation of the Spotify
   * [x] Test displaying playlist names with PlaylistDisplay component
   * [x] Added Spotify login to LoginScreen component
   * [x] Created comprehensive test cases
-* [ ] Link pace plan to Spotify playlist (Prompt 5.2)
-  * [ ] Add playlist selection UI to pace plan creation
-  * [ ] Verify Firestore stores playlist ID
-  * [ ] Confirm linked playlist displays with pace plan
+* [x] Link pace plan to Spotify playlist (Prompt 5.2)
+  * [x] Add playlist selection UI to pace plan creation
+  * [x] Verify Firestore stores playlist ID
+  * [x] Confirm linked playlist displays with pace plan
 
 ---
 

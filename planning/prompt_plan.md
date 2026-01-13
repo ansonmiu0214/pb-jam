@@ -170,7 +170,6 @@ Implement Spotify authentication:
 - Fetch user playlists after login
 - Cache playlists in memory for session
 Test fetching playlists and confirm display of playlist names.
-```
 
 **Result:** Spotify authentication successfully implemented with:
 - OAuth login flow via popup window
@@ -181,10 +180,18 @@ Test fetching playlists and confirm display of playlist names.
 - Test cases for authentication and playlist management
 
 ```text
-# Prompt 5.2: Link pace plan to playlist
+# Prompt 5.2: Link pace plan to playlist (COMPLETED)
 Add ability to select a Spotify playlist when creating a pace plan.
 Store Spotify playlist ID in Firestore alongside pace plan.
 Test that pace plan shows linked playlist.
+
+**Result:** Playlist linking functionality successfully implemented with:
+- Updated PacePlan interface already included spotifyPlaylistId field
+- Modified createPacePlan function to accept optional spotifyPlaylistId parameter
+- Added playlist selection dropdown to PacePlanSection form with Spotify authentication check
+- Updated pace plan display to show linked playlist name
+- Added comprehensive tests for playlist-linked pace plans
+- Form validation ensures empty playlist ID is not stored
 ```
 
 ### Chunk 6: Timeline Canvas Renderer (basic)
