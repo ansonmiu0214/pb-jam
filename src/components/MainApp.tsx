@@ -17,6 +17,7 @@ import {
 import { RaceSection } from './RaceSection';
 import { PacePlanSection, type PacePlanSectionHandle } from './PacePlanSection';
 import { PlaylistDisplay } from './PlaylistDisplay';
+import { TimelineCanvas } from './TimelineCanvas';
 import {
   getCurrentUser,
   onUserChange,
@@ -117,6 +118,9 @@ export const MainApp: React.FC = () => {
           </Grid>
           <Grid item xs={12} md={6}>
             <PacePlanSection ref={pacePlanSectionRef} />
+          </Grid>
+          <Grid item xs={12}>
+            <TimelineCanvas showDemo={true} />
           </Grid>
           <Grid item xs={12}>
             <PlaylistDisplay onPlaylistSelect={(playlist) => {

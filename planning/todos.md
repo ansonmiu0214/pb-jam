@@ -111,12 +111,14 @@ This todo.md is a thorough checklist to guide your implementation of the Spotify
 
 ## Timeline & Canvas
 
-* [manual] Create HTML canvas element in page
-* Implement `timelineRenderer.ts` (Prompt 6.1)
-
-  * [manual] Draw linear timeline for splits
-  * [manual] Draw song rectangles (song name only)
-  * [manual] Test with mock data
+* [x] Create HTML canvas element in page
+* [x] Implement `timelineRenderer.ts` (Prompt 6.1)
+  * [x] Draw linear timeline for splits
+  * [x] Draw song rectangles (song name only)
+  * [x] Test with mock data
+  * [x] Create TimelineCanvas React component
+  * [x] Integrate with main app layout
+  * [x] Add comprehensive tests
 
 ---
 
