@@ -219,10 +219,19 @@ Verify canvas renders correctly with mock data.
 ### Chunk 7: Drag-and-Drop Reordering
 
 ```text
-# Prompt 7.1: Implement drag-and-drop for songs
+# Prompt 7.1: Implement drag-and-drop for songs (COMPLETED)
 Enable user to drag song rectangles and reorder.
 Update in-memory playlist order after drag ends.
 Provide visual feedback: highlight insertion point.
+
+**Result:** Drag-and-drop functionality successfully implemented with:
+- Enhanced timelineRenderer.ts with drag state support and track rectangle hit testing
+- Mouse and touch event handlers in TimelineCanvas component
+- Visual feedback with highlighting and insertion lines
+- Automatic playlist track fetching when pace plan has linked Spotify playlist
+- Real-time playlist reordering via Spotify API
+- Error handling and user notifications for failed operations
+- Comprehensive test coverage for drag-and-drop logic
 ```
 
 ```text

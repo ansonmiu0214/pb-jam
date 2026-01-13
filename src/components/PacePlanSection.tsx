@@ -28,8 +28,7 @@ import {
   Delete as DeleteIcon,
   Add as AddIcon,
   Edit as EditIcon,
-  ExpandMore as ExpandMoreIcon,
-  ExpandLess as ExpandLessIcon,
+
 } from '@mui/icons-material';
 import { createPacePlan, fetchPacePlans, deletePacePlan, updatePacePlanSplits, parseTimeToSeconds, calculatePace } from '../managers/pacePlanManager';
 import { fetchRaces } from '../managers/raceManager';

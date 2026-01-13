@@ -71,6 +71,10 @@ export const MainApp: React.FC = () => {
     }
   };
 
+  const handleTracksReordered = (newTracks: SpotifyTrack[]) => {
+    setSelectedTracks(newTracks);
+  };
+
   const userDisplay = currentUser
     ? currentUser.email || currentUser.id
     : 'User';
@@ -122,7 +126,11 @@ export const MainApp: React.FC = () => {
             <PacePlanSection ref={pacePlanSectionRef} onPacePlanSelect={setSelectedPacePlan} onTracksLoad={setSelectedTracks} />
           </Grid>
           <Grid item xs={12}>
-            <TimelineCanvas pacePlan={selectedPacePlan || undefined} tracks={selectedTracks} />
+            <TimelineCanvas 
+              pacePlan={selectedPacePlan || undefined} 
+              tracks={selectedTracks}
+              onTracksReordered={handleTracksReordered}
+            />
           </Grid>
           <Grid item xs={12}>
             <PlaylistDisplay onPlaylistSelect={(playlist) => {

@@ -38,7 +38,7 @@ This todo.md is a thorough checklist to guide your implementation of the Spotify
 * [x] Business logic modules (unchanged from vanilla version)
   * [x] `raceManager.ts`, `pacePlanManager.ts`, `firebaseService.ts`
   * [x] `models/types.ts`
-  * [ ] `timelineRenderer.ts`, `undoRedoManager.ts` (pending)
+  * [x] `timelineRenderer.ts` - implemented with drag-and-drop support, `undoRedoManager.ts` (pending)
   * [x] `playlistManager.ts` - Spotify OAuth, playlist fetching, and caching
 * [x] Run LLM prompts for React refactor
 
@@ -124,12 +124,19 @@ This todo.md is a thorough checklist to guide your implementation of the Spotify
 
 ## Drag-and-Drop Reordering
 
-* Implement drag-and-drop for song rectangles (Prompt 7.1)
-
-  * [manual] Verify in-memory playlist order updates after drag
-* Implement save reordered playlist to Spotify (Prompt 7.2)
-
-  * [manual] Test playlist order updates correctly on Spotify
+* [x] Implement drag-and-drop for song rectangles (Prompt 7.1)
+  * [x] Enhanced timelineRenderer.ts with drag state support and visual feedback
+  * [x] Added mouse and touch event handlers in TimelineCanvas component
+  * [x] Implemented track rectangle hit testing and insertion point calculation
+  * [x] Added fetchPlaylistTracks and reorderPlaylistTracks functions to playlistManager.ts
+  * [x] Integrated automatic playlist track fetching when pace plan has linked Spotify playlist
+  * [x] Added error handling and user notifications for failed operations
+  * [x] Created comprehensive tests for drag-and-drop functionality
+  * [x] [manual] Verified in-memory playlist order updates after drag
+* [x] Implement save reordered playlist to Spotify (Prompt 7.2)
+  * [x] Integrated Spotify API reordering with real-time updates
+  * [x] Added error handling with user feedback for API failures
+  * [x] [manual] Test playlist order updates correctly on Spotify
 
 ---
 

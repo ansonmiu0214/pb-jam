@@ -21,7 +21,26 @@ interface CanvasConfig {
     trackBorder: string;
     trackFill: string;
     text: string;
+    dragHighlight: string;
+    insertionLine: string;
   };
+}
+
+export interface DragState {
+  isDragging: boolean;
+  draggedTrackIndex: number | null;
+  insertionPoint: number | null;
+  dragStartY: number;
+  dragCurrentY: number;
+}
+
+export interface TrackRectangle {
+  index: number;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  track: SpotifyTrack;
 }
 
 const DEFAULT_CONFIG: CanvasConfig = {
@@ -37,6 +56,8 @@ const DEFAULT_CONFIG: CanvasConfig = {
     trackBorder: '#1db954',
     trackFill: '#1aa34a',
     text: '#ffffff',
+    dragHighlight: '#ff6b35',
+    insertionLine: '#ff6b35',
   },
 };
 
@@ -48,6 +69,18 @@ export function renderTimeline(
   data: TimelineData,
   config: Partial<CanvasConfig> = {}
 ): void {
+  renderTimelineWithDragState(canvas, data, config, null);
+}
+
+/**
+ * Render timeline with drag state support
+ */
+export function renderTimelineWithDragState(
+  canvas: HTMLCanvasElement,
+  data: TimelineData,
+  config: Partial<CanvasConfig> = {},
+  dragState: DragState | null = null
+): TrackRectangle[] {
   const ctx = canvas.getContext('2d');
   if (!ctx) {
     throw new Error('Could not get canvas 2D context');
@@ -77,10 +110,18 @@ export function renderTimeline(
   // Draw race splits
   drawRaceSplits(ctx, drawArea, data, finalConfig);
 
-  // Draw song tracks if available
+  // Draw song tracks if available and return track rectangles
+  let trackRectangles: TrackRectangle[] = [];
   if (data.tracks && data.tracks.length > 0) {
-    drawSongTracks(ctx, drawArea, data, finalConfig);
+    trackRectangles = drawSongTracksWithDragState(ctx, drawArea, data, finalConfig, dragState);
   }
+
+  // Draw insertion point if dragging
+  if (dragState?.isDragging && dragState.insertionPoint !== null) {
+    drawInsertionLine(ctx, drawArea, data, finalConfig, dragState.insertionPoint);
+  }
+
+  return trackRectangles;
 }
 
 /**
@@ -179,22 +220,24 @@ function drawRaceSplits(
 }
 
 /**
- * Draw song tracks as rectangles to the right of splits (vertical layout)
+ * Draw song tracks as rectangles to the right of splits (vertical layout) with drag state support
  */
-function drawSongTracks(
+function drawSongTracksWithDragState(
   ctx: CanvasRenderingContext2D,
   drawArea: { x: number; y: number; width: number; height: number },
   data: TimelineData,
-  config: CanvasConfig
-): void {
+  config: CanvasConfig,
+  dragState: DragState | null
+): TrackRectangle[] {
   let currentTime = 0;
   const trackX = drawArea.x + 60 + 120 + 10; // Start after splits with some padding
   const trackWidth = 150; // Fixed width for track rectangles
+  const trackRectangles: TrackRectangle[] = [];
 
-  data.tracks!.forEach((track, _index) => {
+  data.tracks!.forEach((track, index) => {
     const trackDurationSeconds = track.durationMs / 1000;
     const trackHeight = (trackDurationSeconds / data.totalTime) * drawArea.height;
-    const y = drawArea.y + (currentTime / data.totalTime) * drawArea.height;
+    let y = drawArea.y + (currentTime / data.totalTime) * drawArea.height;
 
     // Don't draw tracks that extend beyond the race duration
     if (currentTime >= data.totalTime) return;
@@ -205,12 +248,36 @@ function drawSongTracks(
       ((data.totalTime - currentTime) / data.totalTime) * drawArea.height
     );
 
+    // Apply drag offset if this track is being dragged
+    if (dragState?.isDragging && dragState.draggedTrackIndex === index) {
+      y += dragState.dragCurrentY - dragState.dragStartY;
+    }
+
+    // Store track rectangle for hit testing
+    trackRectangles.push({
+      index,
+      x: trackX,
+      y: drawArea.y + (currentTime / data.totalTime) * drawArea.height, // Original position for hit testing
+      width: trackWidth,
+      height: adjustedHeight,
+      track
+    });
+
+    // Determine colors based on drag state
+    let fillColor = config.colors.trackFill;
+    let borderColor = config.colors.trackBorder;
+    
+    if (dragState?.isDragging && dragState.draggedTrackIndex === index) {
+      fillColor = config.colors.dragHighlight;
+      borderColor = config.colors.dragHighlight;
+    }
+
     // Draw track rectangle
-    ctx.fillStyle = config.colors.trackFill;
+    ctx.fillStyle = fillColor;
     ctx.fillRect(trackX, y, trackWidth, adjustedHeight);
 
-    ctx.strokeStyle = config.colors.trackBorder;
-    ctx.lineWidth = 1;
+    ctx.strokeStyle = borderColor;
+    ctx.lineWidth = dragState?.isDragging && dragState.draggedTrackIndex === index ? 2 : 1;
     ctx.strokeRect(trackX, y, trackWidth, adjustedHeight);
 
     // Draw track name
@@ -256,7 +323,96 @@ function drawSongTracks(
 
     currentTime += trackDurationSeconds;
   });
+
+  return trackRectangles;
 }
+
+/**
+ * Draw insertion line to show where track will be inserted
+ */
+function drawInsertionLine(
+  ctx: CanvasRenderingContext2D,
+  drawArea: { x: number; y: number; width: number; height: number },
+  data: TimelineData,
+  config: CanvasConfig,
+  insertionPoint: number
+): void {
+  let currentTime = 0;
+  const trackX = drawArea.x + 60 + 120 + 10;
+  const trackWidth = 150;
+
+  // Find the Y position for the insertion point
+  for (let i = 0; i < insertionPoint && i < data.tracks!.length; i++) {
+    currentTime += data.tracks![i].durationMs / 1000;
+  }
+
+  const y = drawArea.y + (currentTime / data.totalTime) * drawArea.height;
+
+  // Draw insertion line
+  ctx.strokeStyle = config.colors.insertionLine;
+  ctx.lineWidth = 3;
+  ctx.setLineDash([5, 5]);
+  ctx.beginPath();
+  ctx.moveTo(trackX - 5, y);
+  ctx.lineTo(trackX + trackWidth + 5, y);
+  ctx.stroke();
+  ctx.setLineDash([]); // Reset line dash
+}
+
+/**
+ * Find track index at given Y coordinate
+ */
+export function findTrackAtPosition(
+  trackRectangles: TrackRectangle[],
+  x: number,
+  y: number
+): number | null {
+  for (const rect of trackRectangles) {
+    if (x >= rect.x && x <= rect.x + rect.width &&
+        y >= rect.y && y <= rect.y + rect.height) {
+      return rect.index;
+    }
+  }
+  return null;
+}
+
+/**
+ * Find insertion point for given Y coordinate
+ */
+export function findInsertionPoint(
+  trackRectangles: TrackRectangle[],
+  y: number
+): number {
+  if (trackRectangles.length === 0) return 0;
+
+  // Find the track closest to the Y position
+  for (let i = 0; i < trackRectangles.length; i++) {
+    const rect = trackRectangles[i];
+    const trackCenterY = rect.y + rect.height / 2;
+    
+    if (y < trackCenterY) {
+      return i;
+    }
+  }
+  
+  // If Y is beyond all tracks, insert at the end
+  return trackRectangles.length;
+}
+
+/**
+ * Create drag state object
+ */
+export function createDragState(): DragState {
+  return {
+    isDragging: false,
+    draggedTrackIndex: null,
+    insertionPoint: null,
+    dragStartY: 0,
+    dragCurrentY: 0
+  };
+}
+
+
 
 /**
  * Create mock data for testing

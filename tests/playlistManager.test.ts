@@ -5,6 +5,8 @@ import {
   getCachedPlaylists,
   clearSpotifyCache,
   getCachedUserProfile,
+  fetchPlaylistTracks,
+  reorderPlaylistTracks,
 } from '../src/services/playlistManager';
 
 // Mock fetch globally
@@ -60,6 +62,22 @@ describe('Spotify Playlist Manager - Basic Functions', () => {
       expect(isSpotifyAuthenticated()).toBe(false);
       expect(getCachedUserProfile()).toBeNull();
       expect(getCachedPlaylists()).toHaveLength(0);
+    });
+  });
+
+  describe('fetchPlaylistTracks', () => {
+    it('should require authentication before fetching tracks', async () => {
+      await expect(fetchPlaylistTracks('test-playlist-id')).rejects.toThrow(
+        'No Spotify access token available'
+      );
+    });
+  });
+
+  describe('reorderPlaylistTracks', () => {
+    it('should require authentication before reordering tracks', async () => {
+      await expect(reorderPlaylistTracks('test-playlist-id', 0, 1)).rejects.toThrow(
+        'No Spotify access token available'
+      );
     });
   });
 });

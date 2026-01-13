@@ -230,6 +230,81 @@ export function getCachedPlaylists(): SpotifyPlaylist[] {
 }
 
 /**
+ * Fetch tracks from a Spotify playlist
+ */
+export async function fetchPlaylistTracks(playlistId: string): Promise<import('../models/types').SpotifyTrack[]> {
+  await ensureValidToken();
+  
+  const tracks: import('../models/types').SpotifyTrack[] = [];
+  let offset = 0;
+  const limit = 50;
+  let hasMore = true;
+  
+  while (hasMore) {
+    const response = await fetch(
+      `${SPOTIFY_API_BASE}/playlists/${playlistId}/tracks?offset=${offset}&limit=${limit}&fields=items(track(id,name,artists(name),duration_ms,uri))`,
+      {
+        headers: {
+          Authorization: `Bearer ${spotifyAccessToken}`,
+        },
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch playlist tracks: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    
+    data.items.forEach((item: {track?: {id?: string; name?: string; artists?: {name?: string}[]; duration_ms?: number; uri?: string}}) => {
+      if (item.track && item.track.id) {
+        tracks.push({
+          id: item.track.id,
+          name: item.track.name,
+          artist: item.track.artists[0]?.name || 'Unknown Artist',
+          durationMs: item.track.duration_ms,
+          uri: item.track.uri,
+        });
+      }
+    });
+
+    hasMore = data.items.length === limit;
+    offset += limit;
+  }
+
+  return tracks;
+}
+
+/**
+ * Reorder tracks in a Spotify playlist
+ */
+export async function reorderPlaylistTracks(
+  playlistId: string,
+  fromIndex: number,
+  toIndex: number,
+  rangeLength = 1
+): Promise<void> {
+  await ensureValidToken();
+
+  const response = await fetch(`${SPOTIFY_API_BASE}/playlists/${playlistId}/tracks`, {
+    method: 'PUT',
+    headers: {
+      Authorization: `Bearer ${spotifyAccessToken}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      range_start: fromIndex,
+      range_length: rangeLength,
+      insert_before: toIndex,
+    }),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to reorder playlist tracks: ${response.statusText}`);
+  }
+}
+
+/**
  * Clear cached data (for logout)
  */
 export function clearSpotifyCache(): void {
