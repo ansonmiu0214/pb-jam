@@ -23,7 +23,7 @@ function getPacePlansCollectionName(): string {
 /**
  * Create a new pace plan and store it in Firestore linked to a race
  * @param raceId - Race ID to link this pace plan to
- * @param pacePlanData - Pace plan data object with title and targetTime
+ * @param pacePlanData - Pace plan data object with title, targetTime, and optional spotifyPlaylistId
  * @returns The created PacePlan object with ID
  */
 export async function createPacePlan(
@@ -31,6 +31,7 @@ export async function createPacePlan(
   pacePlanData: {
     title: string;
     targetTime: number;
+    spotifyPlaylistId?: string;
   }
 ): Promise<PacePlan> {
   const userId = getUserId();
@@ -48,6 +49,7 @@ export async function createPacePlan(
       tags: [],
       createdAt: new Date(),
       updatedAt: new Date(),
+      ...(pacePlanData.spotifyPlaylistId && { spotifyPlaylistId: pacePlanData.spotifyPlaylistId }),
     };
 
     const pacePlansCollection = collection(db, 'users', userId, getPacePlansCollectionName());

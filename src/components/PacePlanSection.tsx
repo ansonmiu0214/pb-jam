@@ -24,7 +24,8 @@ import { createPacePlan, fetchPacePlans, deletePacePlan } from '../managers/pace
 import { fetchRaces } from '../managers/raceManager';
 import { getCurrentUser } from '../services/userService';
 import { ConfirmDialog } from './ConfirmDialog';
-import type { Race, PacePlan } from '../models/types';
+import type { Race, PacePlan, SpotifyPlaylist } from '../models/types';
+import { getCachedPlaylists, isSpotifyAuthenticated, fetchPlaylists } from '../services/playlistManager';
 
 interface PacePlanFormData {
   raceId: string;
@@ -32,6 +33,7 @@ interface PacePlanFormData {
   targetTimeHours: string;
   targetTimeMinutes: string;
   targetTimeSeconds: string;
+  spotifyPlaylistId: string;
 }
 
 export interface PacePlanSectionHandle {
@@ -41,6 +43,7 @@ export interface PacePlanSectionHandle {
 export const PacePlanSection = forwardRef<PacePlanSectionHandle>((_, ref) => {
   const [races, setRaces] = useState<Race[]>([]);
   const [pacePlans, setPacePlans] = useState<PacePlan[]>([]);
+  const [playlists, setPlaylists] = useState<SpotifyPlaylist[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -53,10 +56,12 @@ export const PacePlanSection = forwardRef<PacePlanSectionHandle>((_, ref) => {
     targetTimeHours: '',
     targetTimeMinutes: '',
     targetTimeSeconds: '',
+    spotifyPlaylistId: '',
   });
 
   useEffect(() => {
     loadRaces();
+    loadPlaylists();
   }, []);
 
   useEffect(() => {
@@ -66,6 +71,11 @@ export const PacePlanSection = forwardRef<PacePlanSectionHandle>((_, ref) => {
       setPacePlans([]);
     }
   }, [selectedRaceId]);
+
+  // Reload playlists when Spotify authentication status might have changed
+  useEffect(() => {
+    loadPlaylists();
+  }, [isSpotifyAuthenticated()]);
 
   // Expose refreshRaces to parent components via ref
   useImperativeHandle(ref, () => ({
@@ -106,6 +116,25 @@ export const PacePlanSection = forwardRef<PacePlanSectionHandle>((_, ref) => {
     }
   };
 
+  const loadPlaylists = async () => {
+    // Load cached playlists if user is authenticated with Spotify
+    if (isSpotifyAuthenticated()) {
+      const cachedPlaylists = getCachedPlaylists();
+      if (cachedPlaylists.length > 0) {
+        setPlaylists(cachedPlaylists);
+      } else {
+        // If no cached playlists, try to fetch them
+        try {
+          const fetchedPlaylists = await fetchPlaylists(true);
+          setPlaylists(fetchedPlaylists);
+        } catch (err) {
+          console.error('Failed to fetch playlists:', err);
+          // Silently fail - playlists just won't be available
+        }
+      }
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -135,10 +164,11 @@ export const PacePlanSection = forwardRef<PacePlanSectionHandle>((_, ref) => {
       await createPacePlan(formData.raceId, {
         title: formData.title.trim(),
         targetTime: totalSeconds,
+        ...(formData.spotifyPlaylistId && { spotifyPlaylistId: formData.spotifyPlaylistId }),
       });
 
       // Reset form
-      setPacePlanFormData({ raceId: '', title: '', targetTimeHours: '', targetTimeMinutes: '', targetTimeSeconds: '' });
+      setPacePlanFormData({ raceId: '', title: '', targetTimeHours: '', targetTimeMinutes: '', targetTimeSeconds: '', spotifyPlaylistId: '' });
       
       // Reload pace plans for the selected race
       if (selectedRaceId) {
@@ -203,6 +233,12 @@ export const PacePlanSection = forwardRef<PacePlanSectionHandle>((_, ref) => {
   const handleRaceSelection = (raceId: string) => {
     setSelectedRaceId(raceId);
     setPacePlanFormData(prev => ({ ...prev, raceId }));
+  };
+
+  const getPlaylistName = (playlistId?: string): string | null => {
+    if (!playlistId) return null;
+    const playlist = playlists.find(p => p.id === playlistId);
+    return playlist ? playlist.name : 'Unknown Playlist';
   };
 
   const formatTime = (seconds: number): string => {
@@ -291,6 +327,30 @@ export const PacePlanSection = forwardRef<PacePlanSectionHandle>((_, ref) => {
                   sx={{ flex: 1 }}
                 />
               </Stack>
+
+              {/* Spotify Playlist Selection */}
+              <FormControl fullWidth disabled={submitting || !isSpotifyAuthenticated()}>
+                <InputLabel>Link Spotify Playlist (Optional)</InputLabel>
+                <Select
+                  value={formData.spotifyPlaylistId}
+                  onChange={handleSelectChange('spotifyPlaylistId')}
+                  label="Link Spotify Playlist (Optional)"
+                >
+                  <MenuItem value="">
+                    <em>No playlist</em>
+                  </MenuItem>
+                  {playlists.map((playlist) => (
+                    <MenuItem key={playlist.id} value={playlist.id}>
+                      {playlist.name} ({playlist.tracks.total} tracks)
+                    </MenuItem>
+                  ))}
+                </Select>
+                {!isSpotifyAuthenticated() && (
+                  <Alert severity="info" sx={{ mt: 1 }}>
+                    Log in with Spotify to link playlists to your pace plans.
+                  </Alert>
+                )}
+              </FormControl>
 
               <Button
                 type="submit"
@@ -381,6 +441,11 @@ export const PacePlanSection = forwardRef<PacePlanSectionHandle>((_, ref) => {
                     <Typography variant="body2" color="text.secondary">
                       Created: {pacePlan.createdAt?.toLocaleDateString() || 'N/A'}
                     </Typography>
+                    {pacePlan.spotifyPlaylistId && (
+                      <Typography variant="body2" color="primary">
+                        🎵 Playlist: {getPlaylistName(pacePlan.spotifyPlaylistId)}
+                      </Typography>
+                    )}
                   </Box>
                   <IconButton
                     onClick={() => handleDelete(pacePlan)}

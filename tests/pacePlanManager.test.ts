@@ -177,6 +177,49 @@ describe('PacePlanManager - CRUD Operations', () => {
 
       consoleSpy.mockRestore();
     });
+
+    it('should create a pace plan with Spotify playlist ID', async () => {
+      const raceId = 'race-456';
+      const title = 'Marathon with Playlist';
+      const targetTime = 10800;
+      const spotifyPlaylistId = 'spotify-playlist-123';
+
+      const pacePlan = await createPacePlan(raceId, { 
+        title, 
+        targetTime, 
+        spotifyPlaylistId 
+      });
+
+      expect(pacePlan).toBeDefined();
+      expect(pacePlan.spotifyPlaylistId).toBe(spotifyPlaylistId);
+    });
+
+    it('should create a pace plan without Spotify playlist ID when not provided', async () => {
+      const raceId = 'race-456';
+      const title = 'Marathon without Playlist';
+      const targetTime = 10800;
+
+      const pacePlan = await createPacePlan(raceId, { title, targetTime });
+
+      expect(pacePlan).toBeDefined();
+      expect(pacePlan.spotifyPlaylistId).toBeUndefined();
+    });
+
+    it('should not include spotifyPlaylistId field when empty string is provided', async () => {
+      const raceId = 'race-456';
+      const title = 'Marathon with Empty Playlist';
+      const targetTime = 10800;
+      const spotifyPlaylistId = '';
+
+      const pacePlan = await createPacePlan(raceId, { 
+        title, 
+        targetTime, 
+        spotifyPlaylistId 
+      });
+
+      expect(pacePlan).toBeDefined();
+      expect(pacePlan.spotifyPlaylistId).toBeUndefined();
+    });
   });
 
   describe('fetchPacePlans', () => {
