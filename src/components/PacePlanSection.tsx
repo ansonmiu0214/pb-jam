@@ -52,11 +52,12 @@ export interface PacePlanSectionHandle {
 
 interface PacePlanSectionProps {
   onPacePlanSelect?: (pacePlan: PacePlan | null) => void;
+  onRaceSelect?: (race: Race | null) => void;
   onTracksLoad?: (tracks: SpotifyTrack[]) => void;
 }
 
 export const PacePlanSection = forwardRef<PacePlanSectionHandle, PacePlanSectionProps>(
-  ({ onPacePlanSelect, onTracksLoad }, ref) => {
+  ({ onPacePlanSelect, onRaceSelect, onTracksLoad }, ref) => {
   const [races, setRaces] = useState<Race[]>([]);
   const [pacePlans, setPacePlans] = useState<PacePlan[]>([]);
   const [playlists, setPlaylists] = useState<SpotifyPlaylist[]>([]);
@@ -265,6 +266,10 @@ export const PacePlanSection = forwardRef<PacePlanSectionHandle, PacePlanSection
   const handleRaceSelection = (raceId: string) => {
     setSelectedRaceId(raceId);
     setPacePlanFormData(prev => ({ ...prev, raceId }));
+    
+    // Find and pass the selected race to parent
+    const selectedRace = races.find(r => r.id === raceId) || null;
+    onRaceSelect?.(selectedRace);
   };
 
   const getPlaylistName = (playlistId?: string): string | null => {

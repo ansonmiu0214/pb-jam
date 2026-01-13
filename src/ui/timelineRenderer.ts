@@ -6,6 +6,7 @@ export interface TimelineData {
   tracks?: SpotifyTrack[];
   totalTime: number;
   totalDistance: number;
+  unit?: 'km' | 'mi';
 }
 
 interface CanvasConfig {
@@ -206,8 +207,9 @@ function drawRaceSplits(
     
     // Only show labels if there's enough height
     if (splitHeight > 30) {
-      // Split distance
-      ctx.fillText(`${split.distance}km`, centerX, centerY - 8);
+      // Split distance with correct unit
+      const unit = data.unit || 'km';
+      ctx.fillText(`${split.distance}${unit}`, centerX, centerY - 8);
       
       // Split time
       const minutes = Math.floor(split.targetTime / 60);

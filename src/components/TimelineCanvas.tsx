@@ -18,11 +18,12 @@ import {
   findInsertionPoint,
   type TimelineData
 } from '../ui/timelineRenderer';
-import type { PacePlan, SpotifyTrack } from '../models/types';
+import type { PacePlan, SpotifyTrack, Race } from '../models/types';
 import { fetchPlaylistTracks, reorderPlaylistTracks } from '../services/playlistManager';
 
 interface TimelineCanvasProps {
   pacePlan?: PacePlan;
+  race?: Race;
   tracks?: SpotifyTrack[];
   showDemo?: boolean;
   onTracksReordered?: (newTracks: SpotifyTrack[]) => void;
@@ -30,6 +31,7 @@ interface TimelineCanvasProps {
 
 export const TimelineCanvas: React.FC<TimelineCanvasProps> = ({ 
   pacePlan, 
+  race,
   tracks, 
   showDemo = false,
   onTracksReordered
@@ -54,7 +56,10 @@ export const TimelineCanvas: React.FC<TimelineCanvasProps> = ({
   // Fetch playlist tracks when pace plan changes
   useEffect(() => {
     const fetchTracks = async () => {
+      console.log('fetchTracks effect triggered:', { pacePlan: pacePlan?.title, playlistId: pacePlan?.spotifyPlaylistId, demoMode });
+      
       if (!pacePlan?.spotifyPlaylistId || demoMode) {
+        console.log('No playlist ID or demo mode, clearing tracks');
         setPlaylistTracks([]);
         return;
       }
@@ -63,7 +68,9 @@ export const TimelineCanvas: React.FC<TimelineCanvasProps> = ({
       setError(null);
       
       try {
+        console.log('Fetching tracks for playlist:', pacePlan.spotifyPlaylistId);
         const fetchedTracks = await fetchPlaylistTracks(pacePlan.spotifyPlaylistId);
+        console.log('Fetched tracks:', fetchedTracks.length, 'tracks');
         setPlaylistTracks(fetchedTracks);
       } catch (err) {
         console.error('Failed to fetch playlist tracks:', err);
@@ -79,6 +86,13 @@ export const TimelineCanvas: React.FC<TimelineCanvasProps> = ({
 
   // Render timeline effect
   useEffect(() => {
+    console.log('Timeline render effect triggered:', {
+      pacePlan: pacePlan?.title,
+      playlistTracksCount: playlistTracks.length,
+      tracksCount: tracks?.length || 0,
+      demoMode
+    });
+    
     if (!canvasRef.current) return;
 
     let timelineData: TimelineData;
@@ -88,27 +102,32 @@ export const TimelineCanvas: React.FC<TimelineCanvasProps> = ({
       // Use mock data for demo
       timelineData = createMockTimelineData();
       tracksToUse = timelineData.tracks || [];
+      console.log('Using mock data with', tracksToUse.length, 'tracks');
     } else if (pacePlan) {
       // Use real pace plan data
       tracksToUse = tracks || playlistTracks;
+      console.log('Timeline rendering with tracks:', tracksToUse.length, 'tracks');
       timelineData = {
         splits: pacePlan.splits,
         tracks: tracksToUse,
         totalTime: pacePlan.targetTime,
         totalDistance: pacePlan.splits.reduce((sum, split) => sum + split.distance, 0),
+        unit: race?.unit || 'km',
       };
     } else {
       // No data to render
+      console.log('No data to render');
       return;
     }
 
     try {
       const rectangles = renderTimelineWithDragState(canvasRef.current, timelineData, {}, dragState);
       setTrackRectangles(rectangles);
+      console.log('Rendered', rectangles.length, 'track rectangles');
     } catch (error) {
       console.error('Failed to render timeline:', error);
     }
-  }, [pacePlan, tracks, playlistTracks, demoMode, dragState]);
+  }, [pacePlan, tracks, playlistTracks, demoMode, dragState, race]);
 
   const reorderTracks = useCallback(async (fromIndex: number, toIndex: number) => {
     if (!pacePlan?.spotifyPlaylistId) return;
@@ -142,6 +161,40 @@ export const TimelineCanvas: React.FC<TimelineCanvasProps> = ({
       }
     }
   }, [pacePlan?.spotifyPlaylistId, tracks, playlistTracks, onTracksReordered]);
+
+  // Helper functions - define early to avoid initialization order issues
+  const getCurrentTimelineData = useCallback((): TimelineData | null => {
+    if (demoMode || (!pacePlan && !tracks && !playlistTracks.length)) {
+      return createMockTimelineData();
+    } else if (pacePlan) {
+      const tracksToUse = tracks || playlistTracks;
+      return {
+        splits: pacePlan.splits,
+        tracks: tracksToUse,
+        totalTime: pacePlan.targetTime,
+        totalDistance: pacePlan.splits.reduce((sum, split) => sum + split.distance, 0),
+        unit: race?.unit || 'km',
+      };
+    }
+    return null;
+  }, [demoMode, pacePlan, tracks, playlistTracks, race]);
+
+  const resetDragState = useCallback(() => {
+    dragState.isDragging = false;
+    dragState.draggedTrackIndex = null;
+    dragState.insertionPoint = null;
+    dragState.dragStartY = 0;
+    dragState.dragCurrentY = 0;
+    
+    // Re-render without drag state
+    if (canvasRef.current) {
+      const timelineData = getCurrentTimelineData();
+      if (timelineData) {
+        const rectangles = renderTimelineWithDragState(canvasRef.current, timelineData, {}, null);
+        setTrackRectangles(rectangles);
+      }
+    }
+  }, [getCurrentTimelineData, dragState]);
 
   // Mouse event handlers for drag-and-drop
   const handleMouseDown = useCallback((event: React.MouseEvent<HTMLCanvasElement>) => {
@@ -261,39 +314,6 @@ export const TimelineCanvas: React.FC<TimelineCanvasProps> = ({
     event.preventDefault();
     await handleMouseUp();
   }, [handleMouseUp]);
-
-  // Helper functions
-  const getCurrentTimelineData = useCallback((): TimelineData | null => {
-    if (demoMode || (!pacePlan && !tracks && !playlistTracks.length)) {
-      return createMockTimelineData();
-    } else if (pacePlan) {
-      const tracksToUse = tracks || playlistTracks;
-      return {
-        splits: pacePlan.splits,
-        tracks: tracksToUse,
-        totalTime: pacePlan.targetTime,
-        totalDistance: pacePlan.splits.reduce((sum, split) => sum + split.distance, 0),
-      };
-    }
-    return null;
-  }, [demoMode, pacePlan, tracks, playlistTracks]);
-
-  const resetDragState = useCallback(() => {
-    dragState.isDragging = false;
-    dragState.draggedTrackIndex = null;
-    dragState.insertionPoint = null;
-    dragState.dragStartY = 0;
-    dragState.dragCurrentY = 0;
-    
-    // Re-render without drag state
-    if (canvasRef.current) {
-      const timelineData = getCurrentTimelineData();
-      if (timelineData) {
-        const rectangles = renderTimelineWithDragState(canvasRef.current, timelineData, {}, null);
-        setTrackRectangles(rectangles);
-      }
-    }
-  }, [getCurrentTimelineData, dragState]);
 
   const handleToggleDemo = () => {
     setDemoMode(!demoMode);

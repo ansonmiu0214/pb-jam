@@ -23,12 +23,13 @@ import {
   onUserChange,
 } from '../services/userService';
 import { signOut as firebaseSignOut } from '../services/firebaseService';
-import type { User, PacePlan, SpotifyTrack } from '../models/types';
+import type { User, PacePlan, SpotifyTrack, Race } from '../models/types';
 
 export const MainApp: React.FC = () => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [selectedPacePlan, setSelectedPacePlan] = useState<PacePlan | null>(null);
+  const [selectedRace, setSelectedRace] = useState<Race | null>(null);
   const [selectedTracks, setSelectedTracks] = useState<SpotifyTrack[]>([]);
   const pacePlanSectionRef = useRef<PacePlanSectionHandle>(null);
 
@@ -123,11 +124,17 @@ export const MainApp: React.FC = () => {
             <RaceSection onRaceCreated={handleRaceCreated} onRaceDeleted={handleRaceDeleted} />
           </Grid>
           <Grid item xs={12} md={6}>
-            <PacePlanSection ref={pacePlanSectionRef} onPacePlanSelect={setSelectedPacePlan} onTracksLoad={setSelectedTracks} />
+            <PacePlanSection 
+              ref={pacePlanSectionRef} 
+              onPacePlanSelect={setSelectedPacePlan} 
+              onRaceSelect={setSelectedRace}
+              onTracksLoad={setSelectedTracks} 
+            />
           </Grid>
           <Grid item xs={12}>
             <TimelineCanvas 
               pacePlan={selectedPacePlan || undefined} 
+              race={selectedRace || undefined}
               tracks={selectedTracks}
               onTracksReordered={handleTracksReordered}
             />
