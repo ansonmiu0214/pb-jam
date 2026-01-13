@@ -13,7 +13,7 @@ import { ContentCopy as CopyIcon } from '@mui/icons-material';
 export const SpotifyDebug: React.FC = () => {
   const currentOrigin = window.location.origin;
   const spotifyClientId = import.meta.env.VITE_SPOTIFY_CLIENT_ID;
-  const spotifyRedirectUri = import.meta.env.VITE_SPOTIFY_REDIRECT_URI;
+  const spotifyRedirectUri = import.meta.env.VITE_SPOTIFY_REDIRECT_URI || window.location.origin;
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text).then(() => {
