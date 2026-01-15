@@ -56,11 +56,15 @@ A **single-page web application** (frontend-only) that allows users to visualize
 ### Timeline / Canvas
 
 * Single canvas rendering splits, elevation, distance markers, song rectangles.
+* **Drag-and-drop implemented:** Users can click and drag song rectangles to reorder playlist tracks
+* **Visual feedback:** Highlighted dragged tracks and insertion lines for drop targets
+* **Real-time updates:** Changes saved to Spotify playlist with error handling
 * Timeline scrollable, momentum scrolling on touch devices if simple.
 * Distance markers per km.
 * Elevation: linear color scale (red uphill, green downhill, gray flat).
 * Tooltips follow pointer/finger, disappear on tap elsewhere (mobile).
 * Timeline shows song duration beyond race time; songs exceeding race time marked with red border.
+* **Cross-platform support:** Works on desktop (mouse) and mobile (touch) devices.
 
 ### UI / Interaction
 
@@ -86,7 +90,7 @@ A **single-page web application** (frontend-only) that allows users to visualize
   * `raceManager.ts` – CRUD operations for races
   * `pacePlanManager.ts` – CRUD and validation for pace plans
   * `playlistManager.ts` – Spotify API integration, OAuth authentication, playlist caching, and fetching (implemented)
-  * `timelineRenderer.ts` – canvas drawing of splits, songs, elevation (pending)
+  * `timelineRenderer.ts` – canvas drawing of splits, songs, elevation with drag-and-drop support (implemented)
   * `undoRedoManager.ts` – undo/redo stack (pending)
   * `firebaseService.ts` – persistence
   * `userService.ts` – user state management

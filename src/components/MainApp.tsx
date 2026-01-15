@@ -17,16 +17,20 @@ import {
 import { RaceSection } from './RaceSection';
 import { PacePlanSection, type PacePlanSectionHandle } from './PacePlanSection';
 import { PlaylistDisplay } from './PlaylistDisplay';
+import { TimelineCanvas } from './TimelineCanvas';
 import {
   getCurrentUser,
   onUserChange,
 } from '../services/userService';
 import { signOut as firebaseSignOut } from '../services/firebaseService';
-import type { User } from '../models/types';
+import type { User, PacePlan, SpotifyTrack, Race } from '../models/types';
 
 export const MainApp: React.FC = () => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const [selectedPacePlan, setSelectedPacePlan] = useState<PacePlan | null>(null);
+  const [selectedRace, setSelectedRace] = useState<Race | null>(null);
+  const [selectedTracks, setSelectedTracks] = useState<SpotifyTrack[]>([]);
   const pacePlanSectionRef = useRef<PacePlanSectionHandle>(null);
 
   useEffect(() => {
@@ -66,6 +70,11 @@ export const MainApp: React.FC = () => {
     } catch (error) {
       console.error('Logout failed:', error);
     }
+  };
+
+  const handleTracksReordered = (newTracks: SpotifyTrack[]) => {
+    console.log('[MainApp] Tracks reordered:', newTracks.length);
+    setSelectedTracks(newTracks);
   };
 
   const userDisplay = currentUser
@@ -116,7 +125,20 @@ export const MainApp: React.FC = () => {
             <RaceSection onRaceCreated={handleRaceCreated} onRaceDeleted={handleRaceDeleted} />
           </Grid>
           <Grid item xs={12} md={6}>
-            <PacePlanSection ref={pacePlanSectionRef} />
+            <PacePlanSection 
+              ref={pacePlanSectionRef} 
+              onPacePlanSelect={setSelectedPacePlan} 
+              onRaceSelect={setSelectedRace}
+              onTracksLoad={setSelectedTracks} 
+            />
+          </Grid>
+          <Grid item xs={12}>
+            <TimelineCanvas 
+              pacePlan={selectedPacePlan || undefined} 
+              race={selectedRace || undefined}
+              tracks={selectedTracks}
+              onTracksReordered={handleTracksReordered}
+            />
           </Grid>
           <Grid item xs={12}>
             <PlaylistDisplay onPlaylistSelect={(playlist) => {

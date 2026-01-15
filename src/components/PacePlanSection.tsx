@@ -15,16 +15,26 @@ import {
   Alert,
   CircularProgress,
   SelectChangeEvent,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Paper,
+  Collapse,
 } from '@mui/material';
 import {
   Delete as DeleteIcon,
   Add as AddIcon,
+  Edit as EditIcon,
+
 } from '@mui/icons-material';
-import { createPacePlan, fetchPacePlans, deletePacePlan } from '../managers/pacePlanManager';
+import { createPacePlan, fetchPacePlans, deletePacePlan, updatePacePlanSplits, parseTimeToSeconds, calculatePace } from '../managers/pacePlanManager';
 import { fetchRaces } from '../managers/raceManager';
 import { getCurrentUser } from '../services/userService';
 import { ConfirmDialog } from './ConfirmDialog';
-import type { Race, PacePlan, SpotifyPlaylist } from '../models/types';
+import type { Race, PacePlan, SpotifyPlaylist, SpotifyTrack, Split } from '../models/types';
 import { getCachedPlaylists, isSpotifyAuthenticated, fetchPlaylists } from '../services/playlistManager';
 
 interface PacePlanFormData {
@@ -40,7 +50,14 @@ export interface PacePlanSectionHandle {
   refreshRaces: () => Promise<void>;
 }
 
-export const PacePlanSection = forwardRef<PacePlanSectionHandle>((_, ref) => {
+interface PacePlanSectionProps {
+  onPacePlanSelect?: (pacePlan: PacePlan | null) => void;
+  onRaceSelect?: (race: Race | null) => void;
+  onTracksLoad?: (tracks: SpotifyTrack[]) => void;
+}
+
+export const PacePlanSection = forwardRef<PacePlanSectionHandle, PacePlanSectionProps>(
+  ({ onPacePlanSelect, onRaceSelect, onTracksLoad }, ref) => {
   const [races, setRaces] = useState<Race[]>([]);
   const [pacePlans, setPacePlans] = useState<PacePlan[]>([]);
   const [playlists, setPlaylists] = useState<SpotifyPlaylist[]>([]);
@@ -50,6 +67,8 @@ export const PacePlanSection = forwardRef<PacePlanSectionHandle>((_, ref) => {
   const [selectedRaceId, setSelectedRaceId] = useState<string>('');
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [pacePlanToDelete, setPacePlanToDelete] = useState<PacePlan | null>(null);
+  const [expandedPacePlan, setExpandedPacePlan] = useState<string | null>(null);
+  const [editingSplits, setEditingSplits] = useState<{[key: string]: Split[]}>({});
   const [formData, setPacePlanFormData] = useState<PacePlanFormData>({
     raceId: '',
     title: '',
@@ -109,7 +128,9 @@ export const PacePlanSection = forwardRef<PacePlanSectionHandle>((_, ref) => {
     if (!user) return;
 
     try {
+      console.log('[PacePlanSection] Loading pace plans for race:', raceId);
       const pacePlanList = await fetchPacePlans(raceId);
+      console.log('[PacePlanSection] Loaded', pacePlanList.length, 'pace plans');
       setPacePlans(pacePlanList);
     } catch (err: unknown) {
       console.error('Failed to load pace plans:', err);
@@ -162,9 +183,13 @@ export const PacePlanSection = forwardRef<PacePlanSectionHandle>((_, ref) => {
     setError(null);
 
     try {
+      // Find the selected race to get its distance
+      const selectedRace = races.find(race => race.id === formData.raceId);
+      
       await createPacePlan(formData.raceId, {
         title: formData.title.trim(),
         targetTime: totalSeconds,
+        raceDistance: selectedRace?.distance,
         ...(formData.spotifyPlaylistId && { spotifyPlaylistId: formData.spotifyPlaylistId }),
       });
 
@@ -186,6 +211,16 @@ export const PacePlanSection = forwardRef<PacePlanSectionHandle>((_, ref) => {
   const handleDelete = async (pacePlan: PacePlan) => {
     setPacePlanToDelete(pacePlan);
     setDeleteDialogOpen(true);
+  };
+
+  const handleSelectPacePlan = (pacePlan: PacePlan) => {
+    // Call the parent callback to select this pace plan
+    console.log('[PacePlanSection] Selected pace plan:', pacePlan.title, pacePlan.id);
+    onPacePlanSelect?.(pacePlan);
+    
+    // Note: Tracks would need to be fetched from the Spotify API using the playlist ID
+    // For now, just clear tracks - they can be fetched on-demand in a future enhancement
+    onTracksLoad?.([]);
   };
 
   const confirmDelete = async () => {
@@ -232,14 +267,122 @@ export const PacePlanSection = forwardRef<PacePlanSectionHandle>((_, ref) => {
   };
 
   const handleRaceSelection = (raceId: string) => {
+    console.log('[PacePlanSection] Selected race ID:', raceId);
     setSelectedRaceId(raceId);
     setPacePlanFormData(prev => ({ ...prev, raceId }));
+    
+    // Find and pass the selected race to parent
+    const selectedRace = races.find(r => r.id === raceId) || null;
+    console.log('[PacePlanSection] Selected race:', selectedRace?.title, selectedRace?.id);
+    onRaceSelect?.(selectedRace);
   };
 
   const getPlaylistName = (playlistId?: string): string | null => {
     if (!playlistId) return null;
     const playlist = playlists.find(p => p.id === playlistId);
     return playlist ? playlist.name : 'Unknown Playlist';
+  };
+
+  const getRaceDate = (raceId: string): string => {
+    const race = races.find(r => r.id === raceId);
+    if (race?.raceDate) {
+      return new Date(race.raceDate).toLocaleDateString();
+    }
+    return 'TBD';
+  };
+
+  // Split editing functions
+  const handleEditSplits = (pacePlan: PacePlan) => {
+    if (expandedPacePlan === pacePlan.id) {
+      setExpandedPacePlan(null);
+      setEditingSplits(prev => {
+        const updated = { ...prev };
+        delete updated[pacePlan.id];
+        return updated;
+      });
+    } else {
+      setExpandedPacePlan(pacePlan.id);
+      setEditingSplits(prev => ({
+        ...prev,
+        [pacePlan.id]: [...pacePlan.splits],
+      }));
+    }
+  };
+
+  const handleSplitChange = (pacePlanId: string, splitIndex: number, field: 'distance' | 'targetTime', value: string) => {
+    setEditingSplits(prev => {
+      const splits = [...(prev[pacePlanId] || [])];
+      if (field === 'distance') {
+        splits[splitIndex] = { ...splits[splitIndex], distance: parseFloat(value) || 0 };
+      } else if (field === 'targetTime') {
+        // Try to parse as MM:SS format first, then fall back to seconds
+        let seconds: number;
+        if (value.includes(':')) {
+          seconds = parseTimeToSeconds(value);
+        } else {
+          seconds = parseInt(value) || 0;
+        }
+        splits[splitIndex] = { ...splits[splitIndex], targetTime: seconds };
+      }
+      // Recalculate pace
+      splits[splitIndex].pace = calculatePace(splits[splitIndex].distance, splits[splitIndex].targetTime);
+      
+      return { ...prev, [pacePlanId]: splits };
+    });
+  };
+
+  const handleAddSplit = (pacePlanId: string) => {
+    setEditingSplits(prev => {
+      const splits = [...(prev[pacePlanId] || [])];
+      splits.push({
+        distance: 5, // Default 5km
+        targetTime: 1500, // Default 25 minutes
+        pace: 5, // Default 5 min/km
+      });
+      return { ...prev, [pacePlanId]: splits };
+    });
+  };
+
+  const handleRemoveSplit = (pacePlanId: string, splitIndex: number) => {
+    setEditingSplits(prev => {
+      const splits = [...(prev[pacePlanId] || [])];
+      splits.splice(splitIndex, 1);
+      return { ...prev, [pacePlanId]: splits };
+    });
+  };
+
+  const handleSaveSplits = async (pacePlanId: string) => {
+    const splits = editingSplits[pacePlanId];
+    if (!splits) return;
+
+    try {
+      await updatePacePlanSplits(pacePlanId, splits);
+      
+      // Refresh pace plans to get updated data
+      if (selectedRaceId) {
+        await loadPacePlans(selectedRaceId);
+      }
+      
+      // Clear editing state
+      setEditingSplits(prev => {
+        const updated = { ...prev };
+        delete updated[pacePlanId];
+        return updated;
+      });
+      setExpandedPacePlan(null);
+    } catch (err: unknown) {
+      console.error('Failed to save splits:', err);
+      setError('Failed to save splits. Please try again.');
+    }
+  };
+
+  const handleCancelEditSplits = (pacePlanId: string) => {
+    setEditingSplits(prev => {
+      const updated = { ...prev };
+      delete updated[pacePlanId];
+      return updated;
+    });
+    setExpandedPacePlan(null);
   };
 
   const formatTime = (seconds: number): string => {
@@ -429,10 +572,29 @@ export const PacePlanSection = forwardRef<PacePlanSectionHandle>((_, ref) => {
       ) : (
         <Stack spacing={2}>
           {pacePlans.map((pacePlan) => (
-            <Card key={pacePlan.id}>
+            <Card 
+              key={pacePlan.id}
+              sx={{ 
+                transition: 'all 0.2s',
+                '&:hover': {
+                  boxShadow: 2,
+                }
+              }}
+            >
               <CardContent>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start' }}>
-                  <Box>
+                  <Box 
+                    onClick={() => handleSelectPacePlan(pacePlan)}
+                    sx={{ 
+                      cursor: 'pointer',
+                      flexGrow: 1,
+                      '&:hover': {
+                        '& .MuiTypography-h6': {
+                          color: 'primary.main',
+                        }
+                      }
+                    }}
+                  >
                     <Typography variant="h6" gutterBottom>
                       {pacePlan.title}
                     </Typography>
@@ -440,7 +602,7 @@ export const PacePlanSection = forwardRef<PacePlanSectionHandle>((_, ref) => {
                       Target Time: {formatTime(pacePlan.targetTime)}
                     </Typography>
                     <Typography variant="body2" color="text.secondary">
-                      Created: {pacePlan.createdAt?.toLocaleDateString() || 'N/A'}
+                      Splits: {pacePlan.splits.length} • Race Date: {getRaceDate(pacePlan.raceId)}
                     </Typography>
                     {pacePlan.spotifyPlaylistId && (
                       <Typography variant="body2" color="primary">
@@ -448,14 +610,120 @@ export const PacePlanSection = forwardRef<PacePlanSectionHandle>((_, ref) => {
                       </Typography>
                     )}
                   </Box>
-                  <IconButton
-                    onClick={() => handleDelete(pacePlan)}
-                    color="error"
-                    size="small"
-                  >
-                    <DeleteIcon />
-                  </IconButton>
+                  <Box sx={{ display: 'flex', gap: 1 }}>
+                    <IconButton
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleEditSplits(pacePlan);
+                      }}
+                      color="primary"
+                      size="small"
+                      title="Edit Splits"
+                    >
+                      <EditIcon />
+                    </IconButton>
+                    <IconButton
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDelete(pacePlan);
+                      }}
+                      color="error"
+                      size="small"
+                      title="Delete Pace Plan"
+                    >
+                      <DeleteIcon />
+                    </IconButton>
+                  </Box>
                 </Box>
+
+                {/* Collapsible Splits Editor */}
+                <Collapse in={expandedPacePlan === pacePlan.id}>
+                  <Box sx={{ mt: 2, pt: 2, borderTop: 1, borderColor: 'divider' }}>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                      <Typography variant="h6">
+                        Edit Splits
+                      </Typography>
+                      <Button
+                        startIcon={<AddIcon />}
+                        onClick={() => handleAddSplit(pacePlan.id)}
+                        size="small"
+                        variant="outlined"
+                      >
+                        Add Split
+                      </Button>
+                    </Box>
+
+                    <TableContainer component={Paper} variant="outlined">
+                      <Table size="small">
+                        <TableHead>
+                          <TableRow>
+                            <TableCell>Distance (km)</TableCell>
+                            <TableCell>Target Time</TableCell>
+                            <TableCell>Pace (min/km)</TableCell>
+                            <TableCell width={50}>Actions</TableCell>
+                          </TableRow>
+                        </TableHead>
+                        <TableBody>
+                          {(editingSplits[pacePlan.id] || []).map((split, index) => (
+                            <TableRow key={index}>
+                              <TableCell>
+                                <TextField
+                                  type="number"
+                                  value={split.distance}
+                                  onChange={(e) => handleSplitChange(pacePlan.id, index, 'distance', e.target.value)}
+                                  size="small"
+                                  inputProps={{ step: 0.1, min: 0 }}
+                                  sx={{ width: '100px' }}
+                                />
+                              </TableCell>
+                              <TableCell>
+                                <TextField
+                                  value={split.targetTime > 3600 ? formatTime(split.targetTime) : split.targetTime.toString()}
+                                  onChange={(e) => handleSplitChange(pacePlan.id, index, 'targetTime', e.target.value)}
+                                  size="small"
+                                  placeholder="MM:SS or seconds"
+                                  sx={{ width: '120px' }}
+                                />
+                              </TableCell>
+                              <TableCell>
+                                <Typography variant="body2" color="text.secondary">
+                                  {split.pace.toFixed(2)}
+                                </Typography>
+                              </TableCell>
+                              <TableCell>
+                                <IconButton
+                                  onClick={() => handleRemoveSplit(pacePlan.id, index)}
+                                  color="error"
+                                  size="small"
+                                  disabled={(editingSplits[pacePlan.id] || []).length <= 1}
+                                >
+                                  <DeleteIcon />
+                                </IconButton>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </TableContainer>
+
+                    <Box sx={{ display: 'flex', gap: 1, mt: 2, justifyContent: 'flex-end' }}>
+                      <Button
+                        onClick={() => handleCancelEditSplits(pacePlan.id)}
+                        variant="outlined"
+                        size="small"
+                      >
+                        Cancel
+                      </Button>
+                      <Button
+                        onClick={() => handleSaveSplits(pacePlan.id)}
+                        variant="contained"
+                        size="small"
+                      >
+                        Save Changes
+                      </Button>
+                    </Box>
+                  </Box>
+                </Collapse>
               </CardContent>
             </Card>
           ))}
