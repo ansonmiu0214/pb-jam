@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState, useCallback } from 'react';
+import React, { useEffect, useLayoutEffect, useRef, useState, useCallback } from 'react';
 import {
   Card,
   CardContent,
@@ -41,6 +41,8 @@ export const TimelineCanvas: React.FC<TimelineCanvasProps> = ({
   const [playlistTracks, setPlaylistTracks] = useState<SpotifyTrack[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [shouldResetDrag, setShouldResetDrag] = useState(false);
+  const [isReordering, setIsReordering] = useState(false);
   
   // Drag state
   const [dragState] = useState(() => createDragState());
@@ -84,13 +86,29 @@ export const TimelineCanvas: React.FC<TimelineCanvasProps> = ({
     fetchTracks();
   }, [pacePlan?.spotifyPlaylistId, demoMode]);
 
+  // Effect to reset drag state after tracks are reordered
+  useLayoutEffect(() => {
+    if (shouldResetDrag) {
+      dragState.isDragging = false;
+      dragState.draggedTrackIndex = null;
+      dragState.insertionPoint = null;
+      dragState.dragStartY = 0;
+      dragState.dragCurrentY = 0;
+      
+      console.log('Cleared drag state');
+      setShouldResetDrag(false);
+      setIsReordering(false);
+    }
+  }, [shouldResetDrag]);
+
   // Render timeline effect
   useEffect(() => {
-    console.log('Timeline render effect triggered:', {
+    console.log('=== Timeline render effect triggered ===', {
       pacePlan: pacePlan?.title,
       playlistTracksCount: playlistTracks.length,
       tracksCount: tracks?.length || 0,
-      demoMode
+      demoMode,
+      timestamp: new Date().toISOString()
     });
     
     if (!canvasRef.current) return;
@@ -121,7 +139,15 @@ export const TimelineCanvas: React.FC<TimelineCanvasProps> = ({
     }
 
     try {
-      const rectangles = renderTimelineWithDragState(canvasRef.current, timelineData, {}, dragState);
+      // Log current track order
+      if (tracksToUse.length > 0) {
+        const trackNames = tracksToUse.map((t, i) => `${i + 1}. ${t.name}`).join(' | ');
+        console.log('Current track order:', trackNames);
+      }
+      
+      // Always render with null dragState in the main render effect
+      // Drag state is only rendered during active dragging (mouse/touch move)
+      const rectangles = renderTimelineWithDragState(canvasRef.current, timelineData, {}, null);
       setTrackRectangles(rectangles);
       console.log('Rendered', rectangles.length, 'track rectangles');
     } catch (error) {
@@ -130,19 +156,36 @@ export const TimelineCanvas: React.FC<TimelineCanvasProps> = ({
   }, [pacePlan, tracks, playlistTracks, demoMode, race]);
 
   const reorderTracks = useCallback(async (fromIndex: number, toIndex: number) => {
-    if (!pacePlan?.spotifyPlaylistId) return;
+    console.log('reorderTracks called with:', { fromIndex, toIndex, playlistTracksCount: playlistTracks.length });
+    
+    if (!pacePlan?.spotifyPlaylistId) {
+      console.log('No spotifyPlaylistId, returning');
+      return;
+    }
 
     const currentTracks = (playlistTracks && playlistTracks.length > 0) ? playlistTracks : (tracks || []);
-    if (!currentTracks.length) return;
+    if (!currentTracks.length) {
+      console.log('No tracks to reorder');
+      return;
+    }
 
     // Update local state immediately for better UX
     const newTracks = [...currentTracks];
     const [movedTrack] = newTracks.splice(fromIndex, 1);
     newTracks.splice(toIndex, 0, movedTrack);
     
+    // Log the reordering
+    const trackNames = newTracks.map((t, i) => `${i + 1}. ${t.name}`).join(' | ');
+    console.log(`Reordering: moved track from index ${fromIndex} to ${toIndex}`);
+    console.log('New track order:', trackNames);
+    
     if (tracks) {
+      console.log('Using onTracksReordered callback');
       onTracksReordered?.(newTracks);
+      // Also update playlistTracks so our render effect uses the new order
+      setPlaylistTracks(newTracks);
     } else {
+      console.log('Setting playlistTracks state with', newTracks.length, 'tracks');
       setPlaylistTracks(newTracks);
     }
 
@@ -160,7 +203,7 @@ export const TimelineCanvas: React.FC<TimelineCanvasProps> = ({
         setPlaylistTracks(currentTracks);
       }
     }
-  }, [pacePlan?.spotifyPlaylistId, tracks, playlistTracks, onTracksReordered]);
+  }, [pacePlan, tracks, playlistTracks, onTracksReordered]);
 
   // Helper functions - define early to avoid initialization order issues
   const getCurrentTimelineData = useCallback((): TimelineData | null => {
@@ -179,26 +222,9 @@ export const TimelineCanvas: React.FC<TimelineCanvasProps> = ({
     return null;
   }, [demoMode, pacePlan, tracks, playlistTracks, race]);
 
-  const resetDragState = useCallback(() => {
-    dragState.isDragging = false;
-    dragState.draggedTrackIndex = null;
-    dragState.insertionPoint = null;
-    dragState.dragStartY = 0;
-    dragState.dragCurrentY = 0;
-    
-    // Re-render without drag state
-    if (canvasRef.current) {
-      const timelineData = getCurrentTimelineData();
-      if (timelineData) {
-        const rectangles = renderTimelineWithDragState(canvasRef.current, timelineData, {}, null);
-        setTrackRectangles(rectangles);
-      }
-    }
-  }, [getCurrentTimelineData]);
-
   // Mouse event handlers for drag-and-drop
   const handleMouseDown = useCallback((event: React.MouseEvent<HTMLCanvasElement>) => {
-    if (!canvasRef.current || !trackRectangles.length) return;
+    if (!canvasRef.current || !trackRectangles.length || isReordering) return;
 
     const canvas = canvasRef.current;
     const rect = canvas.getBoundingClientRect();
@@ -222,7 +248,7 @@ export const TimelineCanvas: React.FC<TimelineCanvasProps> = ({
         }
       }
     }
-  }, [trackRectangles, getCurrentTimelineData]);
+  }, [trackRectangles, getCurrentTimelineData, isReordering]);
 
   const handleMouseMove = useCallback((event: React.MouseEvent<HTMLCanvasElement>) => {
     if (!dragState.isDragging || !canvasRef.current || !trackRectangles.length) return;
@@ -242,13 +268,21 @@ export const TimelineCanvas: React.FC<TimelineCanvasProps> = ({
   }, [trackRectangles, getCurrentTimelineData]);
 
   const handleMouseUp = useCallback(async () => {
+    console.log('handleMouseUp called, isDragging:', dragState.isDragging, 'draggedIndex:', dragState.draggedTrackIndex);
+    
     if (!dragState.isDragging || dragState.draggedTrackIndex === null || dragState.insertionPoint === null) {
-      resetDragState();
+      dragState.isDragging = false;
+      dragState.draggedTrackIndex = null;
+      dragState.insertionPoint = null;
+      dragState.dragStartY = 0;
+      dragState.dragCurrentY = 0;
       return;
     }
 
     const fromIndex = dragState.draggedTrackIndex;
     let toIndex = dragState.insertionPoint;
+    
+    console.log('Reordering from', fromIndex, 'to', toIndex);
     
     // Adjust insertion index if moving item down
     if (fromIndex < toIndex) {
@@ -257,15 +291,23 @@ export const TimelineCanvas: React.FC<TimelineCanvasProps> = ({
 
     // Only reorder if position actually changed
     if (fromIndex !== toIndex) {
+      console.log('Position changed, calling reorderTracks with adjusted toIndex:', toIndex);
+      setIsReordering(true);
       await reorderTracks(fromIndex, toIndex);
+      setShouldResetDrag(true);
+    } else {
+      // Position didn't change, just reset drag state
+      dragState.isDragging = false;
+      dragState.draggedTrackIndex = null;
+      dragState.insertionPoint = null;
+      dragState.dragStartY = 0;
+      dragState.dragCurrentY = 0;
     }
-
-    resetDragState();
-  }, [resetDragState, reorderTracks]);
+  }, [dragState, reorderTracks]);
 
   // Touch event handlers for mobile support
   const handleTouchStart = useCallback((event: React.TouchEvent<HTMLCanvasElement>) => {
-    if (!canvasRef.current || !trackRectangles.length) return;
+    if (!canvasRef.current || !trackRectangles.length || isReordering) return;
     
     event.preventDefault();
     const touch = event.touches[0];
@@ -289,7 +331,7 @@ export const TimelineCanvas: React.FC<TimelineCanvasProps> = ({
         renderTimelineWithDragState(canvas, timelineData, {}, dragState);
       }
     }
-  }, [trackRectangles, getCurrentTimelineData]);
+  }, [trackRectangles, getCurrentTimelineData, isReordering]);
 
   const handleTouchMove = useCallback((event: React.TouchEvent<HTMLCanvasElement>) => {
     if (!dragState.isDragging || !canvasRef.current || !trackRectangles.length) return;
@@ -360,6 +402,7 @@ export const TimelineCanvas: React.FC<TimelineCanvasProps> = ({
         )}
 
         <Box sx={{ 
+          position: 'relative',
           display: 'flex', 
           justifyContent: 'center', 
           alignItems: 'flex-start',
@@ -385,6 +428,24 @@ export const TimelineCanvas: React.FC<TimelineCanvasProps> = ({
               cursor: dragState.isDragging ? 'grabbing' : 'grab',
             }}
           />
+
+          {isReordering && (
+            <Box sx={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              display: 'flex',
+              justifyContent: 'center',
+              alignItems: 'center',
+              bgcolor: 'rgba(0, 0, 0, 0.3)',
+              zIndex: 1000,
+              borderRadius: 1,
+            }}>
+              <CircularProgress />
+            </Box>
+          )}
         </Box>
 
         {(demoMode || hasData) && (
