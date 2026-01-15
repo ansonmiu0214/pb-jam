@@ -230,6 +230,53 @@ export function getCachedPlaylists(): SpotifyPlaylist[] {
 }
 
 /**
+ * Fetch audio features for tracks to get BPM data
+ */
+async function fetchAudioFeaturesForTracks(tracks: import('../models/types').SpotifyTrack[]): Promise<void> {
+  if (tracks.length === 0) return;
+  
+  await ensureValidToken();
+  
+  // Spotify API allows up to 100 track IDs per request for audio features
+  const batchSize = 100;
+  
+  for (let i = 0; i < tracks.length; i += batchSize) {
+    const batch = tracks.slice(i, i + batchSize);
+    const trackIds = batch.map(track => track.id).join(',');
+    
+    try {
+      const response = await fetch(
+        `${SPOTIFY_API_BASE}/audio-features?ids=${trackIds}`,
+        {
+          headers: {
+            Authorization: `Bearer ${spotifyAccessToken}`,
+          },
+        }
+      );
+
+      if (!response.ok) {
+        console.warn(`Failed to fetch audio features: ${response.statusText}`);
+        continue; // Skip this batch but don't fail the entire operation
+      }
+
+      const data = await response.json();
+      
+      // Match audio features back to tracks
+      if (data.audio_features) {
+        data.audio_features.forEach((features: {tempo?: number} | null, index: number) => {
+          if (features && features.tempo && batch[index]) {
+            batch[index].bpm = Math.round(features.tempo);
+          }
+        });
+      }
+    } catch (error) {
+      console.warn('Error fetching audio features:', error);
+      // Continue without BPM data for this batch
+    }
+  }
+}
+
+/**
  * Fetch tracks from a Spotify playlist
  */
 export async function fetchPlaylistTracks(playlistId: string): Promise<import('../models/types').SpotifyTrack[]> {
@@ -271,6 +318,9 @@ export async function fetchPlaylistTracks(playlistId: string): Promise<import('.
     hasMore = data.items.length === limit;
     offset += limit;
   }
+
+  // Fetch audio features for BPM data in batches
+  await fetchAudioFeaturesForTracks(tracks);
 
   return tracks;
 }

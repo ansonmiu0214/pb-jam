@@ -454,22 +454,13 @@ function drawSongTracksWithDragState(
       // Draw track name at top of rectangle
       ctx.fillText(trackName, trackX + 4, y + 4);
       
-      // Draw artist name if there's enough height
+      // Draw BPM if there's enough height and BPM is available
       if (adjustedHeight > 35) {
         ctx.font = '9px Arial';
         ctx.fillStyle = '#cccccc';
-        let artistName = track.artist;
+        const bpmText = track.bpm ? `${Math.round(track.bpm)} BPM` : 'BPM: N/A';
         
-        // Truncate artist name if needed
-        const artistWidth = ctx.measureText(artistName).width;
-        if (artistWidth > maxTextWidth) {
-          while (ctx.measureText(artistName + '...').width > maxTextWidth && artistName.length > 0) {
-            artistName = artistName.slice(0, -1);
-          }
-          artistName += '...';
-        }
-        
-        ctx.fillText(artistName, trackX + 4, y + 16);
+        ctx.fillText(bpmText, trackX + 4, y + 16);
       }
     }
 
@@ -580,18 +571,18 @@ export function createMockTimelineData(): TimelineData {
   ];
 
   const tracks: SpotifyTrack[] = [
-    { id: '1', name: 'Eye of the Tiger', artist: 'Survivor', durationMs: 246000, uri: 'spotify:track:1' },
-    { id: '2', name: 'Pump It Up', artist: 'Elvis Costello', durationMs: 198000, uri: 'spotify:track:2' },
-    { id: '3', name: "Don't Stop Me Now", artist: 'Queen', durationMs: 219000, uri: 'spotify:track:3' },
-    { id: '4', name: 'Thunderstruck', artist: 'AC/DC', durationMs: 292000, uri: 'spotify:track:4' },
-    { id: '5', name: 'Lose Yourself', artist: 'Eminem', durationMs: 326000, uri: 'spotify:track:5' },
-    { id: '6', name: 'We Will Rock You', artist: 'Queen', durationMs: 122000, uri: 'spotify:track:6' },
-    { id: '7', name: 'Another One Bites the Dust', artist: 'Queen', durationMs: 215000, uri: 'spotify:track:7' },
-    { id: '8', name: 'Born to Run', artist: 'Bruce Springsteen', durationMs: 270000, uri: 'spotify:track:8' },
-    { id: '9', name: 'Push It', artist: 'Salt-N-Pepa', durationMs: 267000, uri: 'spotify:track:9' },
-    { id: '10', name: 'Gonna Fly Now', artist: 'Bill Conti', durationMs: 177000, uri: 'spotify:track:10' },
-    { id: '11', name: 'Hearts on Fire', artist: 'John Caffery', durationMs: 240000, uri: 'spotify:track:11' },
-    { id: '12', name: 'Final Countdown', artist: 'Europe', durationMs: 312000, uri: 'spotify:track:12' },
+    { id: '1', name: 'Eye of the Tiger', artist: 'Survivor', durationMs: 246000, uri: 'spotify:track:1', bpm: 109 },
+    { id: '2', name: 'Pump It Up', artist: 'Elvis Costello', durationMs: 198000, uri: 'spotify:track:2', bpm: 142 },
+    { id: '3', name: "Don't Stop Me Now", artist: 'Queen', durationMs: 219000, uri: 'spotify:track:3', bpm: 156 },
+    { id: '4', name: 'Thunderstruck', artist: 'AC/DC', durationMs: 292000, uri: 'spotify:track:4', bpm: 133 },
+    { id: '5', name: 'Lose Yourself', artist: 'Eminem', durationMs: 326000, uri: 'spotify:track:5', bpm: 86 },
+    { id: '6', name: 'We Will Rock You', artist: 'Queen', durationMs: 122000, uri: 'spotify:track:6', bpm: 114 },
+    { id: '7', name: 'Another One Bites the Dust', artist: 'Queen', durationMs: 215000, uri: 'spotify:track:7', bpm: 110 },
+    { id: '8', name: 'Born to Run', artist: 'Bruce Springsteen', durationMs: 270000, uri: 'spotify:track:8', bpm: 147 },
+    { id: '9', name: 'Push It', artist: 'Salt-N-Pepa', durationMs: 267000, uri: 'spotify:track:9', bpm: 126 },
+    { id: '10', name: 'Gonna Fly Now', artist: 'Bill Conti', durationMs: 177000, uri: 'spotify:track:10', bpm: 120 },
+    { id: '11', name: 'Hearts on Fire', artist: 'John Caffery', durationMs: 240000, uri: 'spotify:track:11', bpm: 132 },
+    { id: '12', name: 'Final Countdown', artist: 'Europe', durationMs: 312000, uri: 'spotify:track:12', bpm: 118 },
   ];
 
   const totalTime = splits.reduce((sum, split) => sum + split.targetTime, 0);

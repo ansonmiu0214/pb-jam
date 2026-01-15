@@ -53,6 +53,7 @@ export interface SpotifyTrack {
   artist: string;
   durationMs: number;
   uri: string;
+  bpm?: number; // Beats per minute from Spotify audio features
 }
 
 /**
