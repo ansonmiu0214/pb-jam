@@ -313,9 +313,11 @@ function drawTimelineAxis(
     ctx.stroke();
 
     // Time label (to the left of the axis)
-    const minutes = Math.floor(time / 60);
-    const seconds = time % 60;
-    const label = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+    const hours = Math.floor(time / 3600);
+    const minutes = Math.floor((time % 3600) / 60);
+    const label = hours > 0 
+      ? `${hours}:${minutes.toString().padStart(2, '0')}`
+      : `0:${minutes.toString().padStart(2, '0')}`;
     ctx.fillText(label, timelineX - 10, y);
   }
 }
