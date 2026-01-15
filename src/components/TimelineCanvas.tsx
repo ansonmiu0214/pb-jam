@@ -39,8 +39,11 @@ export const TimelineCanvas: React.FC<TimelineCanvasProps> = ({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [demoMode, setDemoMode] = useState(showDemo);
   const [playlistTracks, setPlaylistTracks] = useState<SpotifyTrack[]>([]);
+  const [spotifyPlaylistTracks, setSpotifyPlaylistTracks] = useState<SpotifyTrack[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveSuccess, setSaveSuccess] = useState<string | null>(null);
   const [shouldResetDrag, setShouldResetDrag] = useState(false);
   const [isReordering, setIsReordering] = useState(false);
   
@@ -74,6 +77,8 @@ export const TimelineCanvas: React.FC<TimelineCanvasProps> = ({
         const fetchedTracks = await fetchPlaylistTracks(pacePlan.spotifyPlaylistId);
         console.log('Fetched tracks:', fetchedTracks.length, 'tracks');
         setPlaylistTracks(fetchedTracks);
+        setSpotifyPlaylistTracks(fetchedTracks);
+        setSaveSuccess(null);
       } catch (err) {
         console.error('Failed to fetch playlist tracks:', err);
         setError('Failed to load playlist tracks. Please try again.');
@@ -182,27 +187,13 @@ export const TimelineCanvas: React.FC<TimelineCanvasProps> = ({
     if (tracks) {
       console.log('Using onTracksReordered callback');
       onTracksReordered?.(newTracks);
-      // Also update playlistTracks so our render effect uses the new order
       setPlaylistTracks(newTracks);
     } else {
       console.log('Setting playlistTracks state with', newTracks.length, 'tracks');
       setPlaylistTracks(newTracks);
     }
-
-    // Update Spotify playlist
-    try {
-      await reorderPlaylistTracks(pacePlan.spotifyPlaylistId, fromIndex, toIndex);
-    } catch (err) {
-      console.error('Failed to reorder playlist tracks:', err);
-      setError('Failed to save track order to Spotify. Changes may not be persistent.');
-      
-      // Revert local state on failure
-      if (tracks) {
-        onTracksReordered?.(currentTracks);
-      } else {
-        setPlaylistTracks(currentTracks);
-      }
-    }
+    
+    // Note: No Spotify API call here - user must click Save button to persist changes
   }, [pacePlan, tracks, playlistTracks, onTracksReordered]);
 
   // Helper functions - define early to avoid initialization order issues
@@ -221,6 +212,56 @@ export const TimelineCanvas: React.FC<TimelineCanvasProps> = ({
     }
     return null;
   }, [demoMode, pacePlan, tracks, playlistTracks, race]);
+
+  // Check if there are unsaved changes
+  const hasUnsavedChanges = playlistTracks.length > 0 && spotifyPlaylistTracks.length > 0 &&
+    (playlistTracks.length !== spotifyPlaylistTracks.length ||
+     playlistTracks.some((track, i) => track.id !== spotifyPlaylistTracks[i]?.id));
+
+  // Save playlist order to Spotify
+  const savePlaylistOrder = useCallback(async () => {
+    if (!pacePlan?.spotifyPlaylistId || !hasUnsavedChanges) {
+      console.log('Nothing to save');
+      return;
+    }
+
+    setIsSaving(true);
+    setError(null);
+    setSaveSuccess(null);
+
+    try {
+      console.log('Saving playlist order to Spotify...');
+      
+      // Calculate the moves needed to reorder tracks
+      const spotifyIds = spotifyPlaylistTracks.map(t => t.id);
+      const localIds = playlistTracks.map(t => t.id);
+      
+      // For each track in the new order, move it to its correct position
+      for (let i = 0; i < localIds.length; i++) {
+        const trackId = localIds[i];
+        const currentIndex = spotifyIds.indexOf(trackId);
+        
+        if (currentIndex !== i && currentIndex !== -1) {
+          await reorderPlaylistTracks(pacePlan.spotifyPlaylistId, currentIndex, i);
+          // Update our tracking array
+          spotifyIds.splice(currentIndex, 1);
+          spotifyIds.splice(i, 0, trackId);
+        }
+      }
+
+      console.log('Successfully saved playlist order to Spotify');
+      setSpotifyPlaylistTracks(playlistTracks);
+      setSaveSuccess('Playlist order saved successfully!');
+      
+      // Clear success message after 3 seconds
+      setTimeout(() => setSaveSuccess(null), 3000);
+    } catch (err) {
+      console.error('Failed to save playlist order:', err);
+      setError('Failed to save playlist order to Spotify. Please try again.');
+    } finally {
+      setIsSaving(false);
+    }
+  }, [pacePlan?.spotifyPlaylistId, playlistTracks, spotifyPlaylistTracks, hasUnsavedChanges]);
 
   // Mouse event handlers for drag-and-drop
   const handleMouseDown = useCallback((event: React.MouseEvent<HTMLCanvasElement>) => {
@@ -372,14 +413,27 @@ export const TimelineCanvas: React.FC<TimelineCanvasProps> = ({
           <Typography variant="h6">
             Race Timeline Visualization
           </Typography>
-          <Button
-            variant="outlined"
-            size="small"
-            startIcon={<PlayIcon />}
-            onClick={handleToggleDemo}
-          >
-            {demoMode ? 'Hide Demo' : 'Show Demo'}
-          </Button>
+          <Box sx={{ display: 'flex', gap: 1 }}>
+            {hasUnsavedChanges && (
+              <Button
+                variant="contained"
+                color="success"
+                size="small"
+                onClick={savePlaylistOrder}
+                disabled={isSaving}
+              >
+                {isSaving ? 'Saving...' : 'Save Order'}
+              </Button>
+            )}
+            <Button
+              variant="outlined"
+              size="small"
+              startIcon={<PlayIcon />}
+              onClick={handleToggleDemo}
+            >
+              {demoMode ? 'Hide Demo' : 'Show Demo'}
+            </Button>
+          </Box>
         </Box>
 
         {!hasData && !demoMode && (
@@ -475,6 +529,17 @@ export const TimelineCanvas: React.FC<TimelineCanvasProps> = ({
         >
           <Alert onClose={() => setError(null)} severity="error" sx={{ width: '100%' }}>
             {error}
+          </Alert>
+        </Snackbar>
+
+        <Snackbar
+          open={!!saveSuccess}
+          autoHideDuration={3000}
+          onClose={() => setSaveSuccess(null)}
+          anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+        >
+          <Alert onClose={() => setSaveSuccess(null)} severity="success" sx={{ width: '100%' }}>
+            {saveSuccess}
           </Alert>
         </Snackbar>
       </CardContent>
