@@ -120,6 +120,9 @@ export function renderTimelineWithDragState(
     height: canvasHeight - finalConfig.margin.top - finalConfig.margin.bottom,
   };
 
+  // Draw distance axes (km and miles) to the left of the time axis
+  drawDistanceAxes(ctx, drawArea, data, finalConfig, totalDuration);
+
   // Draw timeline axis
   drawTimelineAxis(ctx, drawArea, data, finalConfig, totalDuration);
 
@@ -138,6 +141,136 @@ export function renderTimelineWithDragState(
   }
 
   return trackRectangles;
+}
+
+/**
+ * Draw distance axes (km and miles) to the left of the time axis
+ */
+function drawDistanceAxes(
+  ctx: CanvasRenderingContext2D,
+  drawArea: { x: number; y: number; width: number; height: number },
+  data: TimelineData,
+  config: CanvasConfig,
+  totalDuration: number
+): void {
+  if (data.totalDistance <= 0 || data.splits.length === 0) return;
+
+  const unit = data.unit || 'km';
+  
+  // Determine conversion: if data is in miles, we need to show both km and miles
+  // If data is in km, we still show both for reference
+  const totalDistanceInKm = unit === 'mi' ? data.totalDistance * 1.60934 : data.totalDistance;
+  const totalDistanceInMi = unit === 'km' ? data.totalDistance * 0.621371 : data.totalDistance;
+
+  // Build cumulative distance -> time mapping from splits (in their native unit)
+  let cumulativeDist = 0;
+  let cumulativeTime = 0;
+  const distanceToTimeMap = new Map<number, number>();
+  distanceToTimeMap.set(0, 0);
+
+  data.splits.forEach((split) => {
+    cumulativeDist += split.distance;
+    cumulativeTime += split.targetTime;
+    distanceToTimeMap.set(cumulativeDist, cumulativeTime);
+  });
+
+  ctx.strokeStyle = config.colors.splitBorder;
+  ctx.lineWidth = 2;
+  ctx.fillStyle = config.colors.text;
+  ctx.font = 'bold 11px Arial';
+
+  // Axis positions: to the left of the time axis
+  // Time axis is at drawArea.x + 50, so place km and miles axes to the left
+  const kmAxisX = drawArea.x + 8;
+  const milesAxisX = drawArea.x + 28;
+
+  // Draw axis lines
+  ctx.beginPath();
+  ctx.moveTo(kmAxisX, drawArea.y);
+  ctx.lineTo(kmAxisX, drawArea.y + drawArea.height);
+  ctx.stroke();
+
+  ctx.beginPath();
+  ctx.moveTo(milesAxisX, drawArea.y);
+  ctx.lineTo(milesAxisX, drawArea.y + drawArea.height);
+  ctx.stroke();
+
+  // Draw axis labels at the top
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'bottom';
+  ctx.font = 'bold 10px Arial';
+  ctx.fillText('km', kmAxisX, drawArea.y - 5);
+  ctx.fillText('mi', milesAxisX, drawArea.y - 5);
+
+  // Draw tick marks and labels
+  ctx.lineWidth = 1;
+  ctx.font = '9px Arial';
+  ctx.textBaseline = 'middle';
+
+  // Draw KM axis markers (always every 1 km)
+  for (let kmDistance = 0; kmDistance <= totalDistanceInKm; kmDistance += 1) {
+    // Convert km distance back to race unit to find the time
+    const distanceInRaceUnit = unit === 'mi' ? kmDistance / 1.60934 : kmDistance;
+    const time = distanceToTimeMap.get(Math.round(distanceInRaceUnit * 10) / 10) || 
+                 interpolateTime(distanceInRaceUnit, data.splits);
+    
+    if (time >= 0 && time <= totalDuration) {
+      const y = drawArea.y + (time / totalDuration) * drawArea.height;
+
+      // KM tick mark and label
+      ctx.strokeStyle = config.colors.splitBorder;
+      ctx.beginPath();
+      ctx.moveTo(kmAxisX - 3, y);
+      ctx.lineTo(kmAxisX + 3, y);
+      ctx.stroke();
+
+      ctx.fillStyle = config.colors.text;
+      ctx.textAlign = 'right';
+      ctx.fillText(kmDistance.toFixed(1), kmAxisX - 5, y);
+    }
+  }
+
+  // Draw miles axis markers (always every 1 mile)
+  for (let miDistance = 0; miDistance <= totalDistanceInMi; miDistance += 1) {
+    // Convert miles distance back to race unit to find the time
+    const distanceInRaceUnit = unit === 'km' ? miDistance * 0.621371 : miDistance;
+    const time = distanceToTimeMap.get(Math.round(distanceInRaceUnit * 10) / 10) || 
+                 interpolateTime(distanceInRaceUnit, data.splits);
+    
+    if (time >= 0 && time <= totalDuration) {
+      const y = drawArea.y + (time / totalDuration) * drawArea.height;
+
+      // Miles tick mark and label
+      ctx.strokeStyle = config.colors.splitBorder;
+      ctx.beginPath();
+      ctx.moveTo(milesAxisX - 3, y);
+      ctx.lineTo(milesAxisX + 3, y);
+      ctx.stroke();
+
+      ctx.fillStyle = config.colors.text;
+      ctx.textAlign = 'right';
+      ctx.fillText(miDistance.toFixed(2), milesAxisX - 5, y);
+    }
+  }
+}
+
+/**
+ * Interpolate time for a given distance using split data
+ */
+function interpolateTime(distance: number, splits: Split[]): number {
+  let cumulativeDistance = 0;
+  let cumulativeTime = 0;
+
+  for (const split of splits) {
+    if (distance <= cumulativeDistance + split.distance) {
+      const fraction = (distance - cumulativeDistance) / split.distance;
+      return cumulativeTime + fraction * split.targetTime;
+    }
+    cumulativeDistance += split.distance;
+    cumulativeTime += split.targetTime;
+  }
+
+  return cumulativeTime;
 }
 
 /**
