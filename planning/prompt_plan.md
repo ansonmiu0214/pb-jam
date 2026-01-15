@@ -274,7 +274,7 @@ After completing Tier 1 MVP:
 ### Chunk 8: Split Editing & Validation
 
 ```text
-# Prompt 8.1 — Add split editing UI
+# Prompt 8.1 — Add split editing UI (COMPLETED)
 Extend the pace plan UI to support editing splits.
 
 Requirements:
@@ -291,6 +291,18 @@ Requirements:
 Constraints:
 - No breaking changes to existing pace plans
 - Use TypeScript types consistently
+
+**Result:** Split editing UI successfully implemented with:
+- Collapsible splits table in PacePlanSection component with Material-UI components
+- Editable distance (km) and target time fields with number/time input support
+- Read-only computed pace display (automatically calculated)
+- Add Split button with default 5km/25min values
+- Delete split functionality with protection against deleting the last split
+- Save/Cancel buttons for commits and rollbacks
+- Complete state management for editing sessions
+- Time input supports both MM:SS format and seconds
+- Comprehensive test coverage in PacePlanSection.test.tsx
+- Integration with existing updatePacePlanSplits function in pacePlanManager
 ```
 
 ```text
