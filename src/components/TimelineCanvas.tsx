@@ -92,6 +92,7 @@ export const TimelineCanvas: React.FC<TimelineCanvasProps> = ({
   }, [pacePlan?.spotifyPlaylistId, demoMode]);
 
   // Effect to reset drag state after tracks are reordered
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useLayoutEffect(() => {
     if (shouldResetDrag) {
       dragState.isDragging = false;
@@ -220,7 +221,7 @@ export const TimelineCanvas: React.FC<TimelineCanvasProps> = ({
 
   // Save playlist order to Spotify
   const savePlaylistOrder = useCallback(async () => {
-    if (!pacePlan?.spotifyPlaylistId || !hasUnsavedChanges) {
+    if (!pacePlan?.spotifyPlaylistId) {
       console.log('Nothing to save');
       return;
     }
@@ -261,7 +262,7 @@ export const TimelineCanvas: React.FC<TimelineCanvasProps> = ({
     } finally {
       setIsSaving(false);
     }
-  }, [pacePlan?.spotifyPlaylistId, playlistTracks, spotifyPlaylistTracks, hasUnsavedChanges]);
+  }, [pacePlan, playlistTracks, spotifyPlaylistTracks]);
 
   // Mouse event handlers for drag-and-drop
   const handleMouseDown = useCallback((event: React.MouseEvent<HTMLCanvasElement>) => {
@@ -291,6 +292,7 @@ export const TimelineCanvas: React.FC<TimelineCanvasProps> = ({
     }
   }, [trackRectangles, getCurrentTimelineData, isReordering]);
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const handleMouseMove = useCallback((event: React.MouseEvent<HTMLCanvasElement>) => {
     if (!dragState.isDragging || !canvasRef.current || !trackRectangles.length) return;
 
@@ -308,6 +310,7 @@ export const TimelineCanvas: React.FC<TimelineCanvasProps> = ({
     }
   }, [trackRectangles, getCurrentTimelineData]);
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const handleMouseUp = useCallback(async () => {
     console.log('handleMouseUp called, isDragging:', dragState.isDragging, 'draggedIndex:', dragState.draggedTrackIndex);
     
@@ -347,6 +350,7 @@ export const TimelineCanvas: React.FC<TimelineCanvasProps> = ({
   }, [dragState, reorderTracks]);
 
   // Touch event handlers for mobile support
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const handleTouchStart = useCallback((event: React.TouchEvent<HTMLCanvasElement>) => {
     if (!canvasRef.current || !trackRectangles.length || isReordering) return;
     
@@ -374,6 +378,7 @@ export const TimelineCanvas: React.FC<TimelineCanvasProps> = ({
     }
   }, [trackRectangles, getCurrentTimelineData, isReordering]);
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const handleTouchMove = useCallback((event: React.TouchEvent<HTMLCanvasElement>) => {
     if (!dragState.isDragging || !canvasRef.current || !trackRectangles.length) return;
     

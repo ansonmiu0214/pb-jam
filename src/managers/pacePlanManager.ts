@@ -42,20 +42,13 @@ export async function createPacePlan(
   }
 
   try {
-    // Create a single default split for the entire race
-    const defaultDistance = pacePlanData.raceDistance || 10; // Default to 10km if not provided
-    const defaultSplit: Split = {
-      distance: defaultDistance,
-      targetTime: pacePlanData.targetTime,
-      pace: pacePlanData.targetTime / 60 / defaultDistance, // minutes per km
-    };
-
+    // Initialize with empty splits array - splits can be added separately
     const docData = {
       userId,
       raceId,
       title: pacePlanData.title,
       targetTime: pacePlanData.targetTime,
-      splits: [defaultSplit],
+      splits: [],
       tags: [],
       createdAt: new Date(),
       updatedAt: new Date(),

@@ -27,6 +27,7 @@ class MockHTMLCanvasElement {
 }
 
 // Mock the global HTMLCanvasElement
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 global.HTMLCanvasElement = MockHTMLCanvasElement as any;
 
 describe('Timeline Renderer', () => {
@@ -88,12 +89,14 @@ describe('Timeline Renderer', () => {
       const mockData = createMockTimelineData();
       
       expect(() => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         renderTimeline(mockCanvas as any, mockData);
       }).not.toThrow();
     });
 
     it('should set canvas dimensions', () => {
       const mockData = createMockTimelineData();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       renderTimeline(mockCanvas as any, mockData);
       
       expect(mockCanvas.width).toBeGreaterThan(0);
@@ -102,6 +105,7 @@ describe('Timeline Renderer', () => {
 
     it('should call canvas drawing methods', () => {
       const mockData = createMockTimelineData();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       renderTimeline(mockCanvas as any, mockData);
       
       // Should clear canvas (fill background)
@@ -126,6 +130,7 @@ describe('Timeline Renderer', () => {
       };
       
       expect(() => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         renderTimeline(mockCanvas as any, emptyData);
       }).not.toThrow();
     });
@@ -138,6 +143,7 @@ describe('Timeline Renderer', () => {
       };
       
       expect(() => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         renderTimeline(mockCanvas as any, dataWithoutTracks);
       }).not.toThrow();
     });
@@ -157,6 +163,7 @@ describe('Timeline Renderer', () => {
         },
       };
       
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       renderTimeline(mockCanvas as any, mockData, customConfig);
       
       expect(mockCanvas.width).toBe(1000);
@@ -173,6 +180,7 @@ describe('Timeline Renderer', () => {
       const mockData = createMockTimelineData();
       
       expect(() => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         renderTimeline(mockBadCanvas as any, mockData);
       }).toThrow('Could not get canvas 2D context');
     });

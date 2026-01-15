@@ -101,13 +101,12 @@ export function renderTimelineWithDragState(
   const minHeightForTracks = (data.tracks?.length || 0) * minTrackHeight;
   const minHeightNeeded = finalConfig.margin.top + finalConfig.margin.bottom + minHeightForTracks + 200;
   
-  // Use dynamic height based on content
-  const calculatedHeight = Math.max(finalConfig.height, minHeightNeeded);
-  finalConfig.height = calculatedHeight;
+  // Use dynamic height based on content, but respect custom config if provided
+  const canvasHeight = config.height !== undefined ? finalConfig.height : Math.max(finalConfig.height, minHeightNeeded);
   
   // Set canvas size
   canvas.width = finalConfig.width;
-  canvas.height = calculatedHeight;
+  canvas.height = canvasHeight;
 
   // Clear canvas
   ctx.fillStyle = finalConfig.colors.background;
@@ -118,7 +117,7 @@ export function renderTimelineWithDragState(
     x: finalConfig.margin.left,
     y: finalConfig.margin.top,
     width: finalConfig.width - finalConfig.margin.left - finalConfig.margin.right,
-    height: finalConfig.height - finalConfig.margin.top - finalConfig.margin.bottom,
+    height: canvasHeight - finalConfig.margin.top - finalConfig.margin.bottom,
   };
 
   // Draw timeline axis
