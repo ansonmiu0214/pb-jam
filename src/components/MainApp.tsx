@@ -73,6 +73,7 @@ export const MainApp: React.FC = () => {
   };
 
   const handleTracksReordered = (newTracks: SpotifyTrack[]) => {
+    console.log('[MainApp] Tracks reordered:', newTracks.length);
     setSelectedTracks(newTracks);
   };
 

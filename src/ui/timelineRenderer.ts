@@ -89,9 +89,25 @@ export function renderTimelineWithDragState(
 
   const finalConfig = { ...DEFAULT_CONFIG, ...config };
   
+  // Calculate total duration including all tracks
+  let totalDuration = data.totalTime;
+  if (data.tracks && data.tracks.length > 0) {
+    const playlistDuration = data.tracks.reduce((sum, track) => sum + (track.durationMs / 1000), 0);
+    totalDuration = Math.max(totalDuration, playlistDuration);
+  }
+  
+  // Calculate minimum height needed: minimum 30px per track for visibility, plus margins
+  const minTrackHeight = data.tracks ? Math.max(30, finalConfig.trackHeight) : 0;
+  const minHeightForTracks = (data.tracks?.length || 0) * minTrackHeight;
+  const minHeightNeeded = finalConfig.margin.top + finalConfig.margin.bottom + minHeightForTracks + 200;
+  
+  // Use dynamic height based on content
+  const calculatedHeight = Math.max(finalConfig.height, minHeightNeeded);
+  finalConfig.height = calculatedHeight;
+  
   // Set canvas size
   canvas.width = finalConfig.width;
-  canvas.height = finalConfig.height;
+  canvas.height = calculatedHeight;
 
   // Clear canvas
   ctx.fillStyle = finalConfig.colors.background;
@@ -106,20 +122,20 @@ export function renderTimelineWithDragState(
   };
 
   // Draw timeline axis
-  drawTimelineAxis(ctx, drawArea, data, finalConfig);
+  drawTimelineAxis(ctx, drawArea, data, finalConfig, totalDuration);
 
   // Draw race splits
-  drawRaceSplits(ctx, drawArea, data, finalConfig);
+  drawRaceSplits(ctx, drawArea, data, finalConfig, totalDuration);
 
   // Draw song tracks if available and return track rectangles
   let trackRectangles: TrackRectangle[] = [];
   if (data.tracks && data.tracks.length > 0) {
-    trackRectangles = drawSongTracksWithDragState(ctx, drawArea, data, finalConfig, dragState);
+    trackRectangles = drawSongTracksWithDragState(ctx, drawArea, data, finalConfig, dragState, totalDuration);
   }
 
   // Draw insertion point if dragging
   if (dragState?.isDragging && dragState.insertionPoint !== null) {
-    drawInsertionLine(ctx, drawArea, data, finalConfig, dragState.insertionPoint);
+    drawInsertionLine(ctx, drawArea, data, finalConfig, dragState.insertionPoint, totalDuration);
   }
 
   return trackRectangles;
@@ -132,7 +148,8 @@ function drawTimelineAxis(
   ctx: CanvasRenderingContext2D,
   drawArea: { x: number; y: number; width: number; height: number },
   data: TimelineData,
-  config: CanvasConfig
+  config: CanvasConfig,
+  totalDuration: number
 ): void {
   ctx.strokeStyle = config.colors.splitBorder;
   ctx.lineWidth = 2;
@@ -150,12 +167,12 @@ function drawTimelineAxis(
   ctx.textAlign = 'right';
   ctx.textBaseline = 'middle';
 
-  const timeIntervals = Math.ceil(data.totalTime / 600); // Every 10 minutes
+  const timeIntervals = Math.ceil(totalDuration / 600); // Every 10 minutes
   for (let i = 0; i <= timeIntervals; i++) {
     const time = i * 600;
-    if (time > data.totalTime) break;
+    if (time > totalDuration) break;
 
-    const y = drawArea.y + (time / data.totalTime) * drawArea.height;
+    const y = drawArea.y + (time / totalDuration) * drawArea.height;
     
     // Tick mark
     ctx.beginPath();
@@ -178,15 +195,16 @@ function drawRaceSplits(
   ctx: CanvasRenderingContext2D,
   drawArea: { x: number; y: number; width: number; height: number },
   data: TimelineData,
-  config: CanvasConfig
+  config: CanvasConfig,
+  totalDuration: number
 ): void {
   let currentTime = 0;
   const splitX = drawArea.x + 60; // Start after time axis and labels
   const splitWidth = 120; // Fixed width for split rectangles
 
   data.splits.forEach((split, _index) => {
-    const splitHeight = (split.targetTime / data.totalTime) * drawArea.height;
-    const y = drawArea.y + (currentTime / data.totalTime) * drawArea.height;
+    const splitHeight = (split.targetTime / totalDuration) * drawArea.height;
+    const y = drawArea.y + (currentTime / totalDuration) * drawArea.height;
 
     // Draw split rectangle
     ctx.fillStyle = config.colors.splitFill;
@@ -229,7 +247,8 @@ function drawSongTracksWithDragState(
   drawArea: { x: number; y: number; width: number; height: number },
   data: TimelineData,
   config: CanvasConfig,
-  dragState: DragState | null
+  dragState: DragState | null,
+  totalDuration: number
 ): TrackRectangle[] {
   let currentTime = 0;
   const trackX = drawArea.x + 60 + 120 + 10; // Start after splits with some padding
@@ -238,28 +257,25 @@ function drawSongTracksWithDragState(
 
   data.tracks!.forEach((track, index) => {
     const trackDurationSeconds = track.durationMs / 1000;
-    const trackHeight = (trackDurationSeconds / data.totalTime) * drawArea.height;
-    let y = drawArea.y + (currentTime / data.totalTime) * drawArea.height;
+    const trackHeight = (trackDurationSeconds / totalDuration) * drawArea.height;
+    let y = drawArea.y + (currentTime / totalDuration) * drawArea.height;
 
-    // Don't draw tracks that extend beyond the race duration
-    if (currentTime >= data.totalTime) return;
+    // Don't draw tracks that extend beyond the timeline (they're now included)
+    if (currentTime >= totalDuration) return;
 
-    // Adjust height if track extends beyond race end
-    const adjustedHeight = Math.min(
-      trackHeight,
-      ((data.totalTime - currentTime) / data.totalTime) * drawArea.height
-    );
+    // Use full track height (don't clip overflow tracks)
+    const adjustedHeight = trackHeight;
 
     // Apply drag offset if this track is being dragged
     if (dragState?.isDragging && dragState.draggedTrackIndex === index) {
       y += dragState.dragCurrentY - dragState.dragStartY;
     }
 
-    // Store track rectangle for hit testing
+    // Store track rectangle for hit testing (using original position for hit testing)
     trackRectangles.push({
       index,
       x: trackX,
-      y: drawArea.y + (currentTime / data.totalTime) * drawArea.height, // Original position for hit testing
+      y: drawArea.y + (currentTime / totalDuration) * drawArea.height,
       width: trackWidth,
       height: adjustedHeight,
       track
@@ -337,7 +353,8 @@ function drawInsertionLine(
   drawArea: { x: number; y: number; width: number; height: number },
   data: TimelineData,
   config: CanvasConfig,
-  insertionPoint: number
+  insertionPoint: number,
+  totalDuration: number
 ): void {
   let currentTime = 0;
   const trackX = drawArea.x + 60 + 120 + 10;
@@ -348,7 +365,7 @@ function drawInsertionLine(
     currentTime += data.tracks![i].durationMs / 1000;
   }
 
-  const y = drawArea.y + (currentTime / data.totalTime) * drawArea.height;
+  const y = drawArea.y + (currentTime / totalDuration) * drawArea.height;
 
   // Draw insertion line
   ctx.strokeStyle = config.colors.insertionLine;

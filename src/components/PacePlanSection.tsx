@@ -128,7 +128,9 @@ export const PacePlanSection = forwardRef<PacePlanSectionHandle, PacePlanSection
     if (!user) return;
 
     try {
+      console.log('[PacePlanSection] Loading pace plans for race:', raceId);
       const pacePlanList = await fetchPacePlans(raceId);
+      console.log('[PacePlanSection] Loaded', pacePlanList.length, 'pace plans');
       setPacePlans(pacePlanList);
     } catch (err: unknown) {
       console.error('Failed to load pace plans:', err);
@@ -213,6 +215,7 @@ export const PacePlanSection = forwardRef<PacePlanSectionHandle, PacePlanSection
 
   const handleSelectPacePlan = (pacePlan: PacePlan) => {
     // Call the parent callback to select this pace plan
+    console.log('[PacePlanSection] Selected pace plan:', pacePlan.title, pacePlan.id);
     onPacePlanSelect?.(pacePlan);
     
     // Note: Tracks would need to be fetched from the Spotify API using the playlist ID
@@ -264,11 +267,13 @@ export const PacePlanSection = forwardRef<PacePlanSectionHandle, PacePlanSection
   };
 
   const handleRaceSelection = (raceId: string) => {
+    console.log('[PacePlanSection] Selected race ID:', raceId);
     setSelectedRaceId(raceId);
     setPacePlanFormData(prev => ({ ...prev, raceId }));
     
     // Find and pass the selected race to parent
     const selectedRace = races.find(r => r.id === raceId) || null;
+    console.log('[PacePlanSection] Selected race:', selectedRace?.title, selectedRace?.id);
     onRaceSelect?.(selectedRace);
   };
 

@@ -104,9 +104,9 @@ export const TimelineCanvas: React.FC<TimelineCanvasProps> = ({
       tracksToUse = timelineData.tracks || [];
       console.log('Using mock data with', tracksToUse.length, 'tracks');
     } else if (pacePlan) {
-      // Use real pace plan data
-      tracksToUse = tracks || playlistTracks;
-      console.log('Timeline rendering with tracks:', tracksToUse.length, 'tracks');
+      // Use real pace plan data - prefer playlistTracks from Spotify over passed tracks prop
+      tracksToUse = (playlistTracks && playlistTracks.length > 0) ? playlistTracks : (tracks || []);
+      console.log('Timeline rendering with tracks:', tracksToUse.length, 'tracks from:', playlistTracks.length > 0 ? 'playlistTracks' : 'tracks prop');
       timelineData = {
         splits: pacePlan.splits,
         tracks: tracksToUse,
@@ -127,12 +127,12 @@ export const TimelineCanvas: React.FC<TimelineCanvasProps> = ({
     } catch (error) {
       console.error('Failed to render timeline:', error);
     }
-  }, [pacePlan, tracks, playlistTracks, demoMode, dragState, race]);
+  }, [pacePlan, tracks, playlistTracks, demoMode, race]);
 
   const reorderTracks = useCallback(async (fromIndex: number, toIndex: number) => {
     if (!pacePlan?.spotifyPlaylistId) return;
 
-    const currentTracks = tracks || playlistTracks;
+    const currentTracks = (playlistTracks && playlistTracks.length > 0) ? playlistTracks : (tracks || []);
     if (!currentTracks.length) return;
 
     // Update local state immediately for better UX
@@ -167,7 +167,7 @@ export const TimelineCanvas: React.FC<TimelineCanvasProps> = ({
     if (demoMode || (!pacePlan && !tracks && !playlistTracks.length)) {
       return createMockTimelineData();
     } else if (pacePlan) {
-      const tracksToUse = tracks || playlistTracks;
+      const tracksToUse = (playlistTracks && playlistTracks.length > 0) ? playlistTracks : (tracks || []);
       return {
         splits: pacePlan.splits,
         tracks: tracksToUse,
@@ -194,7 +194,7 @@ export const TimelineCanvas: React.FC<TimelineCanvasProps> = ({
         setTrackRectangles(rectangles);
       }
     }
-  }, [getCurrentTimelineData, dragState]);
+  }, [getCurrentTimelineData]);
 
   // Mouse event handlers for drag-and-drop
   const handleMouseDown = useCallback((event: React.MouseEvent<HTMLCanvasElement>) => {
@@ -222,7 +222,7 @@ export const TimelineCanvas: React.FC<TimelineCanvasProps> = ({
         }
       }
     }
-  }, [trackRectangles, dragState, getCurrentTimelineData]);
+  }, [trackRectangles, getCurrentTimelineData]);
 
   const handleMouseMove = useCallback((event: React.MouseEvent<HTMLCanvasElement>) => {
     if (!dragState.isDragging || !canvasRef.current || !trackRectangles.length) return;
@@ -239,7 +239,7 @@ export const TimelineCanvas: React.FC<TimelineCanvasProps> = ({
     if (timelineData) {
       renderTimelineWithDragState(canvas, timelineData, {}, dragState);
     }
-  }, [trackRectangles, dragState, getCurrentTimelineData]);
+  }, [trackRectangles, getCurrentTimelineData]);
 
   const handleMouseUp = useCallback(async () => {
     if (!dragState.isDragging || dragState.draggedTrackIndex === null || dragState.insertionPoint === null) {
@@ -261,7 +261,7 @@ export const TimelineCanvas: React.FC<TimelineCanvasProps> = ({
     }
 
     resetDragState();
-  }, [dragState.isDragging, dragState.draggedTrackIndex, dragState.insertionPoint, resetDragState, reorderTracks]);
+  }, [resetDragState, reorderTracks]);
 
   // Touch event handlers for mobile support
   const handleTouchStart = useCallback((event: React.TouchEvent<HTMLCanvasElement>) => {
@@ -289,7 +289,7 @@ export const TimelineCanvas: React.FC<TimelineCanvasProps> = ({
         renderTimelineWithDragState(canvas, timelineData, {}, dragState);
       }
     }
-  }, [trackRectangles, dragState, getCurrentTimelineData]);
+  }, [trackRectangles, getCurrentTimelineData]);
 
   const handleTouchMove = useCallback((event: React.TouchEvent<HTMLCanvasElement>) => {
     if (!dragState.isDragging || !canvasRef.current || !trackRectangles.length) return;
@@ -308,7 +308,7 @@ export const TimelineCanvas: React.FC<TimelineCanvasProps> = ({
     if (timelineData) {
       renderTimelineWithDragState(canvas, timelineData, {}, dragState);
     }
-  }, [trackRectangles, dragState, getCurrentTimelineData]);
+  }, [trackRectangles, getCurrentTimelineData]);
 
   const handleTouchEnd = useCallback(async (event: React.TouchEvent<HTMLCanvasElement>) => {
     event.preventDefault();
@@ -342,7 +342,7 @@ export const TimelineCanvas: React.FC<TimelineCanvasProps> = ({
 
         {!hasData && !demoMode && (
           <Typography color="text.secondary" sx={{ mb: 2 }}>
-            Select a pace plan with splits to visualize the race timeline.
+            {!pacePlan ? '👈 Select a race and pace plan from the left panel to visualize your race timeline.' : 'Add splits to your pace plan to visualize the race timeline.'}
           </Typography>
         )}
 
@@ -362,7 +362,7 @@ export const TimelineCanvas: React.FC<TimelineCanvasProps> = ({
         <Box sx={{ 
           display: 'flex', 
           justifyContent: 'center', 
-          alignItems: 'center',
+          alignItems: 'flex-start',
           border: 1,
           borderColor: 'divider',
           borderRadius: 1,
@@ -381,7 +381,6 @@ export const TimelineCanvas: React.FC<TimelineCanvasProps> = ({
             onTouchEnd={handleTouchEnd}
             style={{
               maxWidth: '100%',
-              maxHeight: '600px',
               display: 'block',
               cursor: dragState.isDragging ? 'grabbing' : 'grab',
             }}
