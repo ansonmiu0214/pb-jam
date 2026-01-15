@@ -323,7 +323,7 @@ export const RaceSection: React.FC<RaceSectionProps> = ({ onRaceCreated, onRaceD
                       Distance: {race.distance} {race.unit}
                     </Typography>
                     <Typography variant="body2" color="text.secondary">
-                      Created: {race.createdAt?.toLocaleDateString() || 'N/A'}
+                      Race Date: {race.raceDate ? new Date(race.raceDate).toLocaleDateString() : 'TBD'}
                     </Typography>
                   </Box>
                   <IconButton

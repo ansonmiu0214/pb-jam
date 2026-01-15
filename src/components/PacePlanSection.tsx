@@ -23,6 +23,7 @@ import {
   TableRow,
   Paper,
   Collapse,
+  Slider,
 } from '@mui/material';
 import {
   Delete as DeleteIcon,
@@ -69,6 +70,7 @@ export const PacePlanSection = forwardRef<PacePlanSectionHandle, PacePlanSection
   const [pacePlanToDelete, setPacePlanToDelete] = useState<PacePlan | null>(null);
   const [expandedPacePlan, setExpandedPacePlan] = useState<string | null>(null);
   const [editingSplits, setEditingSplits] = useState<{[key: string]: Split[]}>({});
+  const [displayUnit, setDisplayUnit] = useState<'km' | 'mi'>('km');
   const [formData, setPacePlanFormData] = useState<PacePlanFormData>({
     raceId: '',
     title: '',
@@ -86,10 +88,15 @@ export const PacePlanSection = forwardRef<PacePlanSectionHandle, PacePlanSection
   useEffect(() => {
     if (selectedRaceId) {
       loadPacePlans(selectedRaceId);
+      // Set display unit to match selected race unit
+      const selectedRace = races.find(r => r.id === selectedRaceId);
+      if (selectedRace) {
+        setDisplayUnit(selectedRace.unit as 'km' | 'mi');
+      }
     } else {
       setPacePlans([]);
     }
-  }, [selectedRaceId]);
+  }, [selectedRaceId, races]);
 
   // Reload playlists when Spotify authentication status might have changed
   const spotifyAuthStatus = isSpotifyAuthenticated();
@@ -396,6 +403,11 @@ export const PacePlanSection = forwardRef<PacePlanSectionHandle, PacePlanSection
     return `${mins}m ${secs}s`;
   };
 
+  const convertDistance = (distanceInKm: number, targetUnit: 'km' | 'mi'): number => {
+    if (targetUnit === 'km') return distanceInKm;
+    return distanceInKm * 0.621371; // km to miles
+  };
+
   return (
     <Box>
       <Typography variant="h4" gutterBottom>
@@ -545,9 +557,29 @@ export const PacePlanSection = forwardRef<PacePlanSectionHandle, PacePlanSection
       )}
 
       {/* Pace Plans List */}
-      <Typography variant="h6" gutterBottom>
-        Pace Plans
-      </Typography>
+      <Box sx={{ mb: 3 }}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+          <Typography variant="h6">
+            Pace Plans
+          </Typography>
+          {selectedRaceId && pacePlans.length > 0 && (
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, minWidth: 200 }}>
+              <Typography variant="body2" sx={{ minWidth: '30px' }}>
+                {displayUnit === 'km' ? 'km' : 'mi'}
+              </Typography>
+              <Slider
+                value={displayUnit === 'km' ? 0 : 1}
+                onChange={(_e, value) => setDisplayUnit(value === 0 ? 'km' : 'mi')}
+                min={0}
+                max={1}
+                step={1}
+                marks={[{ value: 0, label: 'km' }, { value: 1, label: 'mi' }]}
+                sx={{ flex: 1 }}
+              />
+            </Box>
+          )}
+        </Box>
+      </Box>
 
       {loading ? (
         <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
@@ -657,20 +689,30 @@ export const PacePlanSection = forwardRef<PacePlanSectionHandle, PacePlanSection
                       <Table size="small">
                         <TableHead>
                           <TableRow>
-                            <TableCell>Distance (km)</TableCell>
+                            <TableCell>Distance ({displayUnit})</TableCell>
                             <TableCell>Target Time</TableCell>
-                            <TableCell>Pace (min/km)</TableCell>
+                            <TableCell>Pace (min/{displayUnit})</TableCell>
                             <TableCell width={50}>Actions</TableCell>
                           </TableRow>
                         </TableHead>
                         <TableBody>
-                          {(editingSplits[pacePlan.id] || []).map((split, index) => (
+                          {(editingSplits[pacePlan.id] || []).map((split, index) => {
+                            const displayDistance = convertDistance(split.distance, displayUnit);
+                            const displayPace = split.distance > 0 
+                              ? (split.targetTime / 60) / convertDistance(split.distance, displayUnit)
+                              : 0;
+                            return (
                             <TableRow key={index}>
                               <TableCell>
                                 <TextField
                                   type="number"
-                                  value={split.distance}
-                                  onChange={(e) => handleSplitChange(pacePlan.id, index, 'distance', e.target.value)}
+                                  value={displayDistance.toFixed(1)}
+                                  onChange={(e) => {
+                                    const convertedValue = displayUnit === 'km' 
+                                      ? parseFloat(e.target.value) || 0
+                                      : (parseFloat(e.target.value) || 0) / 0.621371;
+                                    handleSplitChange(pacePlan.id, index, 'distance', convertedValue.toString());
+                                  }}
                                   size="small"
                                   inputProps={{ step: 0.1, min: 0 }}
                                   sx={{ width: '100px' }}
@@ -687,7 +729,7 @@ export const PacePlanSection = forwardRef<PacePlanSectionHandle, PacePlanSection
                               </TableCell>
                               <TableCell>
                                 <Typography variant="body2" color="text.secondary">
-                                  {split.pace.toFixed(2)}
+                                  {displayPace.toFixed(2)}
                                 </Typography>
                               </TableCell>
                               <TableCell>
@@ -701,7 +743,8 @@ export const PacePlanSection = forwardRef<PacePlanSectionHandle, PacePlanSection
                                 </IconButton>
                               </TableCell>
                             </TableRow>
-                          ))}
+                            );
+                          })}
                         </TableBody>
                       </Table>
                     </TableContainer>
