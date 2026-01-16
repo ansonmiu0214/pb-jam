@@ -78,6 +78,7 @@ export async function fetchRaces(userId?: string): Promise<Race[]> {
         unit: data.unit,
         tags: data.tags || [],
         pacePlans: data.pacePlans,
+        raceDate: data.raceDate?.toDate ? data.raceDate.toDate() : data.raceDate,
         createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : data.createdAt,
         updatedAt: data.updatedAt?.toDate ? data.updatedAt.toDate() : data.updatedAt,
       } as Race);
