@@ -7,6 +7,7 @@ import {
   isUserLoggedIn,
 } from '../services/userService';
 import { connectToEmulator } from '../services/firebaseService';
+import { UnitProvider } from '../contexts/UnitContext';
 
 export const App: React.FC = () => {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -40,5 +41,9 @@ export const App: React.FC = () => {
     return <SpotifyCallback />;
   }
 
-  return isLoggedIn ? <MainApp /> : <LoginScreen />;
+  return (
+    <UnitProvider defaultUnit="km">
+      {isLoggedIn ? <MainApp /> : <LoginScreen />}
+    </UnitProvider>
+  );
 };

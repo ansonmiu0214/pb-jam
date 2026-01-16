@@ -3,6 +3,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ThemeProvider } from '@mui/material/styles';
 import { PacePlanSection } from '../src/components/PacePlanSection';
+import { UnitProvider } from '../src/contexts/UnitContext';
 import { spotifyTheme } from '../src/theme/spotifyTheme';
 import * as userService from '../src/services/userService';
 import * as raceManager from '../src/managers/raceManager';
@@ -53,7 +54,9 @@ const mockPacePlan: PacePlan = {
 const renderWithTheme = (component: React.ReactElement) => {
   return render(
     <ThemeProvider theme={spotifyTheme}>
-      {component}
+      <UnitProvider defaultUnit="km">
+        {component}
+      </UnitProvider>
     </ThemeProvider>
   );
 };
@@ -79,13 +82,13 @@ describe('PacePlanSection Split Editing', () => {
     
     // Wait for component to load
     await waitFor(() => {
-      expect(screen.getByText('Test Marathon (42.2km)')).toBeInTheDocument();
+      expect(screen.getByText('Test Marathon (42.20 km)')).toBeInTheDocument();
     });
 
     // Select the race
     const raceSelect = screen.getByLabelText('Select Race');
     fireEvent.click(raceSelect);
-    fireEvent.click(screen.getByText('Test Marathon (42.2km)'));
+    fireEvent.click(screen.getByText('Test Marathon (42.20 km)'));
 
     // Wait for pace plans to load
     await waitFor(() => {
@@ -111,12 +114,12 @@ describe('PacePlanSection Split Editing', () => {
     
     // Wait for component to load and select race
     await waitFor(() => {
-      expect(screen.getByText('Test Marathon (42.2km)')).toBeInTheDocument();
+      expect(screen.getByText('Test Marathon (42.20 km)')).toBeInTheDocument();
     });
 
     const raceSelect = screen.getByLabelText('Select Race');
     fireEvent.click(raceSelect);
-    fireEvent.click(screen.getByText('Test Marathon (42.2km)'));
+    fireEvent.click(screen.getByText('Test Marathon (42.20 km)'));
 
     await waitFor(() => {
       expect(screen.getByText('Test Pace Plan')).toBeInTheDocument();
@@ -148,12 +151,12 @@ describe('PacePlanSection Split Editing', () => {
     
     // Setup and navigate to edit mode
     await waitFor(() => {
-      expect(screen.getByText('Test Marathon (42.2km)')).toBeInTheDocument();
+      expect(screen.getByText('Test Marathon (42.20 km)')).toBeInTheDocument();
     });
 
     const raceSelect = screen.getByLabelText('Select Race');
     fireEvent.click(raceSelect);
-    fireEvent.click(screen.getByText('Test Marathon (42.2km)'));
+    fireEvent.click(screen.getByText('Test Marathon (42.20 km)'));
 
     await waitFor(() => {
       expect(screen.getByText('Test Pace Plan')).toBeInTheDocument();
@@ -182,12 +185,12 @@ describe('PacePlanSection Split Editing', () => {
     
     // Setup and navigate to edit mode
     await waitFor(() => {
-      expect(screen.getByText('Test Marathon (42.2km)')).toBeInTheDocument();
+      expect(screen.getByText('Test Marathon (42.20 km)')).toBeInTheDocument();
     });
 
     const raceSelect = screen.getByLabelText('Select Race');
     fireEvent.click(raceSelect);
-    fireEvent.click(screen.getByText('Test Marathon (42.2km)'));
+    fireEvent.click(screen.getByText('Test Marathon (42.20 km)'));
 
     await waitFor(() => {
       expect(screen.getByText('Test Pace Plan')).toBeInTheDocument();
@@ -223,12 +226,12 @@ describe('PacePlanSection Split Editing', () => {
     
     // Setup and navigate to edit mode
     await waitFor(() => {
-      expect(screen.getByText('Test Marathon (42.2km)')).toBeInTheDocument();
+      expect(screen.getByText('Test Marathon (42.20 km)')).toBeInTheDocument();
     });
 
     const raceSelect = screen.getByLabelText('Select Race');
     fireEvent.click(raceSelect);
-    fireEvent.click(screen.getByText('Test Marathon (42.2km)'));
+    fireEvent.click(screen.getByText('Test Marathon (42.20 km)'));
 
     await waitFor(() => {
       expect(screen.getByText('Test Pace Plan')).toBeInTheDocument();
@@ -259,12 +262,12 @@ describe('PacePlanSection Split Editing', () => {
     
     // Setup and navigate to edit mode
     await waitFor(() => {
-      expect(screen.getByText('Test Marathon (42.2km)')).toBeInTheDocument();
+      expect(screen.getByText('Test Marathon (42.20 km)')).toBeInTheDocument();
     });
 
     const raceSelect = screen.getByLabelText('Select Race');
     fireEvent.click(raceSelect);
-    fireEvent.click(screen.getByText('Test Marathon (42.2km)'));
+    fireEvent.click(screen.getByText('Test Marathon (42.20 km)'));
 
     await waitFor(() => {
       expect(screen.getByText('Test Pace Plan')).toBeInTheDocument();
@@ -297,12 +300,12 @@ describe('PacePlanSection Split Editing', () => {
     
     // Setup and navigate to edit mode
     await waitFor(() => {
-      expect(screen.getByText('Test Marathon (42.2km)')).toBeInTheDocument();
+      expect(screen.getByText('Test Marathon (42.20 km)')).toBeInTheDocument();
     });
 
     const raceSelect = screen.getByLabelText('Select Race');
     fireEvent.click(raceSelect);
-    fireEvent.click(screen.getByText('Test Marathon (42.2km)'));
+    fireEvent.click(screen.getByText('Test Marathon (42.20 km)'));
 
     await waitFor(() => {
       expect(screen.getByText('Test Pace Plan')).toBeInTheDocument();

@@ -18,6 +18,7 @@ import {
   findInsertionPoint,
   type TimelineData
 } from '../ui/timelineRenderer';
+import { useUnit } from '../contexts/UnitContext';
 import type { PacePlan, SpotifyTrack, Race } from '../models/types';
 import { fetchPlaylistTracks, reorderPlaylistTracks } from '../services/playlistManager';
 
@@ -37,6 +38,7 @@ export const TimelineCanvas: React.FC<TimelineCanvasProps> = ({
   onTracksReordered
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const { unit: globalUnit, convertDistance } = useUnit();
   const [demoMode, setDemoMode] = useState(showDemo);
   const [playlistTracks, setPlaylistTracks] = useState<SpotifyTrack[]>([]);
   const [spotifyPlaylistTracks, setSpotifyPlaylistTracks] = useState<SpotifyTrack[]>([]);
@@ -131,12 +133,19 @@ export const TimelineCanvas: React.FC<TimelineCanvasProps> = ({
       // Use real pace plan data - prefer playlistTracks from Spotify over passed tracks prop
       tracksToUse = (playlistTracks && playlistTracks.length > 0) ? playlistTracks : (tracks || []);
       console.log('Timeline rendering with tracks:', tracksToUse.length, 'tracks from:', playlistTracks.length > 0 ? 'playlistTracks' : 'tracks prop');
+      
+      // Convert splits to display in global unit
+      const convertedSplits = pacePlan.splits.map(split => ({
+        ...split,
+        distance: convertDistance(split.distance, race?.unit || 'km', globalUnit)
+      }));
+      
       timelineData = {
-        splits: pacePlan.splits,
+        splits: convertedSplits,
         tracks: tracksToUse,
         totalTime: pacePlan.targetTime,
-        totalDistance: pacePlan.splits.reduce((sum, split) => sum + split.distance, 0),
-        unit: race?.unit || 'km',
+        totalDistance: convertedSplits.reduce((sum, split) => sum + split.distance, 0),
+        unit: globalUnit,
       };
     } else {
       // No data to render
@@ -203,16 +212,23 @@ export const TimelineCanvas: React.FC<TimelineCanvasProps> = ({
       return createMockTimelineData();
     } else if (pacePlan) {
       const tracksToUse = (playlistTracks && playlistTracks.length > 0) ? playlistTracks : (tracks || []);
+      
+      // Convert splits to display in global unit
+      const convertedSplits = pacePlan.splits.map(split => ({
+        ...split,
+        distance: convertDistance(split.distance, race?.unit || 'km', globalUnit)
+      }));
+      
       return {
-        splits: pacePlan.splits,
+        splits: convertedSplits,
         tracks: tracksToUse,
         totalTime: pacePlan.targetTime,
-        totalDistance: pacePlan.splits.reduce((sum, split) => sum + split.distance, 0),
-        unit: race?.unit || 'km',
+        totalDistance: convertedSplits.reduce((sum, split) => sum + split.distance, 0),
+        unit: globalUnit,
       };
     }
     return null;
-  }, [demoMode, pacePlan, tracks, playlistTracks, race]);
+  }, [demoMode, pacePlan, tracks, playlistTracks, race, globalUnit, convertDistance]);
 
   // Check if there are unsaved changes
   const hasUnsavedChanges = playlistTracks.length > 0 && spotifyPlaylistTracks.length > 0 &&

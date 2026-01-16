@@ -305,12 +305,6 @@ Constraints:
 - Integration with existing updatePacePlanSplits function in pacePlanManager
 ```
 
-TODO:
-
-- global `km <-> miles` in the navbar
-- use this to create a race, store both km/miles in the database.
-- when fetching the race, fetch both km/miles; then render based on navbar option and pick the right value.
-
 ```text
 # Prompt 8.2 — Core split validation logic
 Implement split validation logic in pacePlanManager.ts.

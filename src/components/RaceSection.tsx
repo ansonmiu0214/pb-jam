@@ -2,16 +2,12 @@ import React, { useState, useEffect } from 'react';
 import {
   Typography,
   TextField,
-  Select,
-  MenuItem,
   Button,
   Card,
   CardContent,
   Box,
   Stack,
   IconButton,
-  FormControl,
-  InputLabel,
   Alert,
   CircularProgress,
 } from '@mui/material';
@@ -23,6 +19,7 @@ import { createRace, fetchRaces, deleteRace } from '../managers/raceManager';
 import { fetchPacePlans, deletePacePlan } from '../managers/pacePlanManager';
 import { getCurrentUser } from '../services/userService';
 import { ConfirmDialog } from './ConfirmDialog';
+import { useUnit } from '../contexts/UnitContext';
 import type { Race } from '../models/types';
 
 interface RaceFormData {
@@ -45,6 +42,7 @@ export const RaceSection: React.FC<RaceSectionProps> = ({ onRaceCreated, onRaceD
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [raceToDelete, setRaceToDelete] = useState<Race | null>(null);
   const [pacePlanCountToDelete, setPacePlanCountToDelete] = useState<number>(0);
+  const { unit: globalUnit, formatDistance } = useUnit();
   const [formData, setFormData] = useState<RaceFormData>(() => {
     // Initialize with today's date in YYYY-MM-DD format
     const today = new Date();
@@ -52,10 +50,15 @@ export const RaceSection: React.FC<RaceSectionProps> = ({ onRaceCreated, onRaceD
     return {
       title: '',
       distance: '',
-      unit: 'km',
+      unit: globalUnit,
       raceDate: dateString,
     };
   });
+
+  // Update form unit when global unit changes
+  useEffect(() => {
+    setFormData(prev => ({ ...prev, unit: globalUnit }));
+  }, [globalUnit]);
 
   useEffect(() => {
     loadRaces();
@@ -135,7 +138,7 @@ export const RaceSection: React.FC<RaceSectionProps> = ({ onRaceCreated, onRaceD
       console.log('[RaceSection] Resetting form');
       const today = new Date();
       const dateString = today.toISOString().split('T')[0];
-      setFormData({ title: '', distance: '', unit: 'km', raceDate: dateString });
+      setFormData({ title: '', distance: '', unit: globalUnit, raceDate: dateString });
       
       // Reload races
       console.log('[RaceSection] Loading races');
@@ -239,7 +242,7 @@ export const RaceSection: React.FC<RaceSectionProps> = ({ onRaceCreated, onRaceD
               />
 
               <TextField
-                label="Distance"
+                label={`Distance (${globalUnit})`}
                 placeholder="Distance"
                 type="number"
                 value={formData.distance}
@@ -248,18 +251,6 @@ export const RaceSection: React.FC<RaceSectionProps> = ({ onRaceCreated, onRaceD
                 fullWidth
                 disabled={submitting}
               />
-
-              <FormControl fullWidth disabled={submitting}>
-                <InputLabel>Unit</InputLabel>
-                <Select
-                  value={formData.unit}
-                  onChange={handleInputChange('unit')}
-                  label="Unit"
-                >
-                  <MenuItem value="km">Kilometers (km)</MenuItem>
-                  <MenuItem value="mi">Miles (mi)</MenuItem>
-                </Select>
-              </FormControl>
 
               <TextField
                 label="Race Date"
@@ -320,7 +311,7 @@ export const RaceSection: React.FC<RaceSectionProps> = ({ onRaceCreated, onRaceD
                       {race.title}
                     </Typography>
                     <Typography color="text.secondary">
-                      Distance: {race.distance} {race.unit}
+                      Distance: {formatDistance(race.distance, race.unit)}
                     </Typography>
                     <Typography variant="body2" color="text.secondary">
                       Race Date: {race.raceDate ? new Date(race.raceDate).toLocaleDateString() : 'TBD'}

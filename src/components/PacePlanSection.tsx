@@ -23,7 +23,6 @@ import {
   TableRow,
   Paper,
   Collapse,
-  Slider,
 } from '@mui/material';
 import {
   Delete as DeleteIcon,
@@ -35,6 +34,7 @@ import { createPacePlan, fetchPacePlans, deletePacePlan, updatePacePlanSplits, p
 import { fetchRaces } from '../managers/raceManager';
 import { getCurrentUser } from '../services/userService';
 import { ConfirmDialog } from './ConfirmDialog';
+import { useUnit } from '../contexts/UnitContext';
 import type { Race, PacePlan, SpotifyPlaylist, SpotifyTrack, Split } from '../models/types';
 import { getCachedPlaylists, isSpotifyAuthenticated, fetchPlaylists } from '../services/playlistManager';
 
@@ -70,7 +70,7 @@ export const PacePlanSection = forwardRef<PacePlanSectionHandle, PacePlanSection
   const [pacePlanToDelete, setPacePlanToDelete] = useState<PacePlan | null>(null);
   const [expandedPacePlan, setExpandedPacePlan] = useState<string | null>(null);
   const [editingSplits, setEditingSplits] = useState<{[key: string]: Split[]}>({});
-  const [displayUnit, setDisplayUnit] = useState<'km' | 'mi'>('km');
+  const { unit: displayUnit, convertDistance } = useUnit();
   const [formData, setPacePlanFormData] = useState<PacePlanFormData>({
     raceId: '',
     title: '',
@@ -88,11 +88,6 @@ export const PacePlanSection = forwardRef<PacePlanSectionHandle, PacePlanSection
   useEffect(() => {
     if (selectedRaceId) {
       loadPacePlans(selectedRaceId);
-      // Set display unit to match selected race unit
-      const selectedRace = races.find(r => r.id === selectedRaceId);
-      if (selectedRace) {
-        setDisplayUnit(selectedRace.unit as 'km' | 'mi');
-      }
     } else {
       setPacePlans([]);
     }
@@ -403,11 +398,6 @@ export const PacePlanSection = forwardRef<PacePlanSectionHandle, PacePlanSection
     return `${mins}m ${secs}s`;
   };
 
-  const convertDistance = (distanceInKm: number, targetUnit: 'km' | 'mi'): number => {
-    if (targetUnit === 'km') return distanceInKm;
-    return distanceInKm * 0.621371; // km to miles
-  };
-
   return (
     <Box>
       <Typography variant="h4" gutterBottom>
@@ -437,7 +427,7 @@ export const PacePlanSection = forwardRef<PacePlanSectionHandle, PacePlanSection
                   ) : (
                     races.map((race) => (
                       <MenuItem key={race.id} value={race.id}>
-                        {race.title} ({race.distance}{race.unit})
+                        {race.title} ({convertDistance(race.distance, race.unit, displayUnit).toFixed(2)} {displayUnit})
                       </MenuItem>
                     ))
                   )}
@@ -541,7 +531,7 @@ export const PacePlanSection = forwardRef<PacePlanSectionHandle, PacePlanSection
               </MenuItem>
               {races.map((race) => (
                 <MenuItem key={race.id} value={race.id}>
-                  {race.title} ({race.distance}{race.unit})
+                  {race.title} ({convertDistance(race.distance, race.unit, displayUnit).toFixed(2)} {displayUnit})
                 </MenuItem>
               ))}
             </Select>
@@ -562,22 +552,6 @@ export const PacePlanSection = forwardRef<PacePlanSectionHandle, PacePlanSection
           <Typography variant="h6">
             Pace Plans
           </Typography>
-          {selectedRaceId && pacePlans.length > 0 && (
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, minWidth: 200 }}>
-              <Typography variant="body2" sx={{ minWidth: '30px' }}>
-                {displayUnit === 'km' ? 'km' : 'mi'}
-              </Typography>
-              <Slider
-                value={displayUnit === 'km' ? 0 : 1}
-                onChange={(_e, value) => setDisplayUnit(value === 0 ? 'km' : 'mi')}
-                min={0}
-                max={1}
-                step={1}
-                marks={[{ value: 0, label: 'km' }, { value: 1, label: 'mi' }]}
-                sx={{ flex: 1 }}
-              />
-            </Box>
-          )}
         </Box>
       </Box>
 
@@ -697,9 +671,9 @@ export const PacePlanSection = forwardRef<PacePlanSectionHandle, PacePlanSection
                         </TableHead>
                         <TableBody>
                           {(editingSplits[pacePlan.id] || []).map((split, index) => {
-                            const displayDistance = convertDistance(split.distance, displayUnit);
+                            const displayDistance = convertDistance(split.distance, 'km', displayUnit);
                             const displayPace = split.distance > 0 
-                              ? (split.targetTime / 60) / convertDistance(split.distance, displayUnit)
+                              ? (split.targetTime / 60) / convertDistance(split.distance, 'km', displayUnit)
                               : 0;
                             return (
                             <TableRow key={index}>
@@ -710,7 +684,7 @@ export const PacePlanSection = forwardRef<PacePlanSectionHandle, PacePlanSection
                                   onChange={(e) => {
                                     const convertedValue = displayUnit === 'km' 
                                       ? parseFloat(e.target.value) || 0
-                                      : (parseFloat(e.target.value) || 0) / 0.621371;
+                                      : convertDistance(parseFloat(e.target.value) || 0, 'mi', 'km');
                                     handleSplitChange(pacePlan.id, index, 'distance', convertedValue.toString());
                                   }}
                                   size="small"
