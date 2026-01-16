@@ -233,7 +233,7 @@ function drawDistanceAxes(
   // Draw miles axis markers (always every 1 mile)
   for (let miDistance = 0; miDistance <= totalDistanceInMi; miDistance += 1) {
     // Convert miles distance back to race unit to find the time
-    const distanceInRaceUnit = unit === 'km' ? miDistance * 0.621371 : miDistance;
+    const distanceInRaceUnit = unit === 'km' ? miDistance * 1.60934 : miDistance;
     const time = distanceToTimeMap.get(Math.round(distanceInRaceUnit * 10) / 10) || 
                  interpolateTime(distanceInRaceUnit, data.splits);
     

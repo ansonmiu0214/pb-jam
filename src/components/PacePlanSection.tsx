@@ -30,7 +30,7 @@ import {
   Edit as EditIcon,
 
 } from '@mui/icons-material';
-import { createPacePlan, fetchPacePlans, deletePacePlan, updatePacePlanSplits, parseTimeToSeconds, calculatePace } from '../managers/pacePlanManager';
+import { createPacePlan, fetchPacePlans, deletePacePlan, updatePacePlanSplits, parseTimeToSeconds, calculatePace, formatTime } from '../managers/pacePlanManager';
 import { fetchRaces } from '../managers/raceManager';
 import { getCurrentUser } from '../services/userService';
 import { ConfirmDialog } from './ConfirmDialog';
@@ -79,6 +79,13 @@ export const PacePlanSection = forwardRef<PacePlanSectionHandle, PacePlanSection
     targetTimeSeconds: '',
     spotifyPlaylistId: '',
   });
+
+  // Helper function to format pace from decimal minutes to MM:SS
+  const formatPace = (paceInMinutes: number): string => {
+    const minutes = Math.floor(paceInMinutes);
+    const seconds = Math.round((paceInMinutes - minutes) * 60);
+    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+  };
 
   useEffect(() => {
     loadRaces();
@@ -703,7 +710,7 @@ export const PacePlanSection = forwardRef<PacePlanSectionHandle, PacePlanSection
                               </TableCell>
                               <TableCell>
                                 <Typography variant="body2" color="text.secondary">
-                                  {displayPace.toFixed(2)}
+                                  {formatPace(displayPace)}
                                 </Typography>
                               </TableCell>
                               <TableCell>
