@@ -230,50 +230,116 @@ export function getCachedPlaylists(): SpotifyPlaylist[] {
 }
 
 /**
- * Fetch audio features for tracks to get BPM data
+ * Fetch audio features for tracks to get BPM data with exponential backoff retry
  */
 async function fetchAudioFeaturesForTracks(tracks: import('../models/types').SpotifyTrack[]): Promise<void> {
   if (tracks.length === 0) return;
   
+  console.log(`Starting BPM fetch for ${tracks.length} tracks`);
   await ensureValidToken();
   
   // Spotify API allows up to 100 track IDs per request for audio features
   const batchSize = 100;
+  const maxRetries = 3;
   
   for (let i = 0; i < tracks.length; i += batchSize) {
     const batch = tracks.slice(i, i + batchSize);
     const trackIds = batch.map(track => track.id).join(',');
     
-    try {
-      const response = await fetch(
-        `${SPOTIFY_API_BASE}/audio-features?ids=${trackIds}`,
-        {
-          headers: {
-            Authorization: `Bearer ${spotifyAccessToken}`,
-          },
-        }
-      );
-
-      if (!response.ok) {
-        console.warn(`Failed to fetch audio features: ${response.statusText}`);
-        continue; // Skip this batch but don't fail the entire operation
-      }
-
-      const data = await response.json();
-      
-      // Match audio features back to tracks
-      if (data.audio_features) {
-        data.audio_features.forEach((features: {tempo?: number} | null, index: number) => {
-          if (features && features.tempo && batch[index]) {
-            batch[index].bpm = Math.round(features.tempo);
+    let retryCount = 0;
+    let lastError = null;
+    
+    while (retryCount < maxRetries) {
+      try {
+        const response = await fetch(
+          `${SPOTIFY_API_BASE}/audio-features?ids=${trackIds}`,
+          {
+            headers: {
+              Authorization: `Bearer ${spotifyAccessToken}`,
+            },
           }
-        });
+        );
+
+        if (!response.ok) {
+          const errorBody = await response.text();
+          console.warn(`Attempt ${retryCount + 1}/${maxRetries}: Failed to fetch audio features: ${response.status}`);
+          
+          // Check if it's an auth issue (401) vs rate limiting (429) vs other error (403)
+          if (response.status === 401 && spotifyRefreshToken && retryCount === 0) {
+            console.log('Got 401, attempting to refresh token...');
+            try {
+              await refreshAccessToken();
+              console.log('Token refreshed, will retry');
+              retryCount++; // Don't count this as a full retry
+              continue;
+            } catch (refreshError) {
+              console.error('Token refresh failed:', refreshError);
+              lastError = refreshError;
+              break;
+            }
+          }
+          
+          // For rate limiting or other errors, wait before retrying
+          if (retryCount < maxRetries - 1 && (response.status === 429 || response.status === 403)) {
+            const delayMs = Math.pow(2, retryCount) * 1000; // Exponential backoff: 1s, 2s, 4s
+            console.warn(`Waiting ${delayMs}ms before retry...`);
+            await new Promise(resolve => setTimeout(resolve, delayMs));
+            retryCount++;
+            continue;
+          }
+          
+          // If we got a 403 and no retries left, log and skip
+          if (response.status === 403) {
+            console.warn(`Spotify API returned 403 Forbidden for audio-features endpoint. BPM data unavailable.`);
+            console.warn(`Error response: ${errorBody}`);
+            break; // Give up on this batch
+          }
+          
+          lastError = new Error(`API error: ${response.status}`);
+          break;
+        }
+
+        const data = await response.json();
+        
+        // Match audio features back to tracks
+        if (data.audio_features) {
+          let successCount = 0;
+          data.audio_features.forEach((features: {tempo?: number} | null, index: number) => {
+            if (features && features.tempo && batch[index]) {
+              batch[index].bpm = Math.round(features.tempo);
+              successCount++;
+            }
+          });
+          if (successCount > 0) {
+            console.log(`Successfully fetched BPM for ${successCount}/${batch.length} tracks in batch`);
+          } else {
+            console.warn(`No tempo data found for any tracks in this batch of ${batch.length} tracks`);
+          }
+        } else {
+          console.warn('No audio_features data in response');
+        }
+        break; // Success, exit retry loop
+      } catch (error) {
+        lastError = error;
+        if (retryCount < maxRetries - 1) {
+          const delayMs = Math.pow(2, retryCount) * 1000;
+          console.warn(`Error fetching audio features, waiting ${delayMs}ms before retry:`, error);
+          await new Promise(resolve => setTimeout(resolve, delayMs));
+          retryCount++;
+        } else {
+          console.error('Error fetching audio features (final attempt):', error);
+          break;
+        }
       }
-    } catch (error) {
-      console.warn('Error fetching audio features:', error);
-      // Continue without BPM data for this batch
+    }
+    
+    if (lastError && retryCount >= maxRetries) {
+      console.warn(`Failed to fetch BPM for batch after ${maxRetries} attempts. Continuing without BPM data.`);
     }
   }
+  
+  const tracksWithBPM = tracks.filter(track => track.bpm).length;
+  console.log(`BPM fetch completed: ${tracksWithBPM}/${tracks.length} tracks have BPM data`);
 }
 
 /**
