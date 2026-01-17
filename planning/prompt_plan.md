@@ -380,7 +380,7 @@ Do not change validation rules.
 ### Chunk 9: Elevation & Distance Visualization
 
 ```text
-# Prompt 9.1 — Persist elevation data
+# Prompt 9.1 — Persist elevation data (COMPLETED)
 Extend split editing to include elevation (integer meters).
 
 Requirements:
@@ -388,6 +388,16 @@ Requirements:
 - Persist elevation to Firestore
 - Backward compatible with existing pace plans
 - Default elevation = 0 for older data
+
+**Result:** Elevation support successfully implemented with:
+- Added elevation column to split editing table with integer input field
+- Enhanced Split interface already supported optional elevation field
+- Updated handleSplitChange to handle elevation modifications with validation
+- Backward compatibility ensured by defaulting elevation to 0 for existing splits without elevation data
+- Updated fetchPacePlans to apply default elevation values when loading from Firestore
+- Enhanced handleAddSplit to include default elevation of 0 for new splits
+- Comprehensive test coverage for backward compatibility scenarios
+- Proper TypeScript typing with elevation field support in all split operations
 ```
 
 ```text

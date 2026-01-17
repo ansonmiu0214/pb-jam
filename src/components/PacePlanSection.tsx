@@ -342,7 +342,7 @@ export const PacePlanSection = forwardRef<PacePlanSectionHandle, PacePlanSection
     }
   };
 
-  const handleSplitChange = (pacePlanId: string, splitIndex: number, field: 'distance' | 'targetTime' | 'targetTimeHours' | 'targetTimeMinutes' | 'targetTimeSeconds', value: string) => {
+  const handleSplitChange = (pacePlanId: string, splitIndex: number, field: 'distance' | 'targetTime' | 'targetTimeHours' | 'targetTimeMinutes' | 'targetTimeSeconds' | 'elevation', value: string) => {
     setEditingSplits(prev => {
       const splits = [...(prev[pacePlanId] || [])];
       if (field === 'distance') {
@@ -379,6 +379,8 @@ export const PacePlanSection = forwardRef<PacePlanSectionHandle, PacePlanSection
 
         const totalSeconds = newHours * 3600 + newMinutes * 60 + newSecs;
         splits[splitIndex] = { ...splits[splitIndex], targetTime: totalSeconds };
+      } else if (field === 'elevation') {
+        splits[splitIndex] = { ...splits[splitIndex], elevation: parseInt(value) || 0 };
       }
       // Recalculate pace
       splits[splitIndex].pace = calculatePace(splits[splitIndex].distance, splits[splitIndex].targetTime);
@@ -397,6 +399,7 @@ export const PacePlanSection = forwardRef<PacePlanSectionHandle, PacePlanSection
         distance: 5, // Default 5km
         targetTime: 25 * 60, // Default 25 minutes (1500 seconds)
         pace: 5, // Default 5 min/km
+        elevation: 0, // Default 0m elevation
       });
       
       // Run validation after adding split
@@ -876,6 +879,7 @@ export const PacePlanSection = forwardRef<PacePlanSectionHandle, PacePlanSection
                             <TableCell>Distance ({displayUnit})</TableCell>
                             <TableCell>Target Time (H:M:S)</TableCell>
                             <TableCell>Pace (min/{displayUnit})</TableCell>
+                            <TableCell>Elevation (m)</TableCell>
                             <TableCell width={150}>Actions</TableCell>
                           </TableRow>
                         </TableHead>
@@ -970,6 +974,18 @@ export const PacePlanSection = forwardRef<PacePlanSectionHandle, PacePlanSection
                                 <Typography variant="body2" color="text.secondary">
                                   {formatPace(displayPace)}
                                 </Typography>
+                              </TableCell>
+                              <TableCell>
+                                <TextField
+                                  type="number"
+                                  value={split.elevation || 0}
+                                  onChange={(e) => handleSplitChange(pacePlan.id, index, 'elevation', e.target.value)}
+                                  size="small"
+                                  inputProps={{ step: 1 }}
+                                  sx={{ width: '80px' }}
+                                  color={fieldColor}
+                                  error={hasError}
+                                />
                               </TableCell>
                               <TableCell>
                                 <Box sx={{ display: 'flex', gap: 0.5 }}>

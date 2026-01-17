@@ -202,7 +202,7 @@ This todo.md is a thorough checklist to guide your implementation of the Spotify
   * [ ] Error messages near affected splits
 
 ### Elevation & Distance Visualization
-* [ ] **Persist elevation data (Prompt 9.1)**
+* [x] **Persist elevation data (Prompt 9.1)** - Elevation input fields added to split editing UI with backward compatibility
 * [ ] **Render elevation on timeline (Prompt 9.2)**
 * [ ] **Distance markers (Prompt 9.3)**
 
