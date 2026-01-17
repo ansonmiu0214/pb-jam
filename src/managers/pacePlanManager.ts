@@ -342,9 +342,9 @@ export function mergeSplits(splits: Split[], indexA: number, indexB: number): Sp
     distance: splitA.distance + splitB.distance,
     targetTime: splitA.targetTime + splitB.targetTime,
     pace: 0, // Will be recalculated
-    elevation: splitA.elevation && splitB.elevation 
+    elevation: splitA.elevation !== undefined && splitB.elevation !== undefined
       ? Math.round((splitA.elevation + splitB.elevation) / 2)
-      : (splitA.elevation || splitB.elevation || 0),
+      : (splitA.elevation ?? splitB.elevation ?? 0),
   };
 
   // Recalculate pace for the merged split

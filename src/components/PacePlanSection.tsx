@@ -608,8 +608,9 @@ export const PacePlanSection = forwardRef<PacePlanSectionHandle, PacePlanSection
           <form onSubmit={handleSubmit}>
             <Stack spacing={2}>
               <FormControl fullWidth disabled={submitting || races.length === 0}>
-                <InputLabel>Select Race</InputLabel>
+                <InputLabel id="race-select-label">Select Race</InputLabel>
                 <Select
+                  labelId="race-select-label"
                   value={formData.raceId}
                   onChange={handleSelectChange('raceId')}
                   label="Select Race"
@@ -714,8 +715,9 @@ export const PacePlanSection = forwardRef<PacePlanSectionHandle, PacePlanSection
           </Typography>
           
           <FormControl fullWidth>
-            <InputLabel>Select Race to View Pace Plans</InputLabel>
+            <InputLabel id="race-view-select-label">Select Race to View Pace Plans</InputLabel>
             <Select
+              labelId="race-view-select-label"
               value={selectedRaceId}
               onChange={(e) => handleRaceSelection(e.target.value)}
               label="Select Race to View Pace Plans"
