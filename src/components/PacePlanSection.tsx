@@ -24,6 +24,7 @@ import {
   Paper,
   Collapse,
 } from '@mui/material';
+import { useTheme } from '@mui/material/styles';
 import {
   Delete as DeleteIcon,
   Add as AddIcon,
@@ -31,12 +32,12 @@ import {
   CallMerge as MergeIcon,
   CallSplit as SplitIcon,
 } from '@mui/icons-material';
-import { createPacePlan, fetchPacePlans, deletePacePlan, updatePacePlanSplits, parseTimeToSeconds, calculatePace, mergeSplits, splitSplit } from '../managers/pacePlanManager';
+import { createPacePlan, fetchPacePlans, deletePacePlan, updatePacePlanSplits, parseTimeToSeconds, calculatePace, mergeSplits, splitSplit, validateSplits } from '../managers/pacePlanManager';
 import { fetchRaces } from '../managers/raceManager';
 import { getCurrentUser } from '../services/userService';
 import { ConfirmDialog } from './ConfirmDialog';
 import { useUnit } from '../contexts/UnitContext';
-import type { Race, PacePlan, SpotifyPlaylist, SpotifyTrack, Split } from '../models/types';
+import type { Race, PacePlan, SpotifyPlaylist, SpotifyTrack, Split, ValidationResult } from '../models/types';
 import { getCachedPlaylists, isSpotifyAuthenticated, fetchPlaylists } from '../services/playlistManager';
 
 interface PacePlanFormData {
@@ -72,7 +73,9 @@ export const PacePlanSection = forwardRef<PacePlanSectionHandle, PacePlanSection
   const [expandedPacePlan, setExpandedPacePlan] = useState<string | null>(null);
   const [editingSplits, setEditingSplits] = useState<{[key: string]: Split[]}>({});
   const [selectedSplitsForMerge, setSelectedSplitsForMerge] = useState<{[key: string]: number[]}>({});
+  const [validationResults, setValidationResults] = useState<{[key: string]: ValidationResult}>({});
   const { unit: displayUnit, convertDistance } = useUnit();
+  const theme = useTheme();
   const [formData, setPacePlanFormData] = useState<PacePlanFormData>({
     raceId: '',
     title: '',
@@ -318,6 +321,11 @@ export const PacePlanSection = forwardRef<PacePlanSectionHandle, PacePlanSection
         delete updated[pacePlan.id];
         return updated;
       });
+      setValidationResults(prev => {
+        const updated = { ...prev };
+        delete updated[pacePlan.id];
+        return updated;
+      });
     } else {
       setExpandedPacePlan(pacePlan.id);
       setEditingSplits(prev => ({
@@ -328,6 +336,9 @@ export const PacePlanSection = forwardRef<PacePlanSectionHandle, PacePlanSection
         ...prev,
         [pacePlan.id]: [],
       }));
+      
+      // Run initial validation
+      setTimeout(() => validatePacePlanSplits(pacePlan.id, pacePlan.splits), 0);
     }
   };
 
@@ -372,6 +383,9 @@ export const PacePlanSection = forwardRef<PacePlanSectionHandle, PacePlanSection
       // Recalculate pace
       splits[splitIndex].pace = calculatePace(splits[splitIndex].distance, splits[splitIndex].targetTime);
       
+      // Run validation after changes
+      setTimeout(() => validatePacePlanSplits(pacePlanId, splits), 0);
+      
       return { ...prev, [pacePlanId]: splits };
     });
   };
@@ -384,6 +398,10 @@ export const PacePlanSection = forwardRef<PacePlanSectionHandle, PacePlanSection
         targetTime: 25 * 60, // Default 25 minutes (1500 seconds)
         pace: 5, // Default 5 min/km
       });
+      
+      // Run validation after adding split
+      setTimeout(() => validatePacePlanSplits(pacePlanId, splits), 0);
+      
       return { ...prev, [pacePlanId]: splits };
     });
   };
@@ -392,6 +410,10 @@ export const PacePlanSection = forwardRef<PacePlanSectionHandle, PacePlanSection
     setEditingSplits(prev => {
       const splits = [...(prev[pacePlanId] || [])];
       splits.splice(splitIndex, 1);
+      
+      // Run validation after removing split
+      setTimeout(() => validatePacePlanSplits(pacePlanId, splits), 0);
+      
       return { ...prev, [pacePlanId]: splits };
     });
   };
@@ -443,6 +465,11 @@ export const PacePlanSection = forwardRef<PacePlanSectionHandle, PacePlanSection
       delete updated[pacePlanId];
       return updated;
     });
+    setValidationResults(prev => {
+      const updated = { ...prev };
+      delete updated[pacePlanId];
+      return updated;
+    });
     setExpandedPacePlan(null);
   };
 
@@ -451,6 +478,10 @@ export const PacePlanSection = forwardRef<PacePlanSectionHandle, PacePlanSection
       const currentSplits = prev[pacePlanId] || [];
       try {
         const mergedSplits = mergeSplits(currentSplits, indexA, indexB);
+        
+        // Run validation after merging splits
+        setTimeout(() => validatePacePlanSplits(pacePlanId, mergedSplits), 0);
+        
         return { ...prev, [pacePlanId]: mergedSplits };
       } catch (err) {
         console.error('Failed to merge splits:', err);
@@ -465,6 +496,10 @@ export const PacePlanSection = forwardRef<PacePlanSectionHandle, PacePlanSection
       const currentSplits = prev[pacePlanId] || [];
       try {
         const splitSplits = splitSplit(currentSplits, index, 'even');
+        
+        // Run validation after splitting
+        setTimeout(() => validatePacePlanSplits(pacePlanId, splitSplits), 0);
+        
         return { ...prev, [pacePlanId]: splitSplits };
       } catch (err) {
         console.error('Failed to split split:', err);
@@ -518,6 +553,37 @@ export const PacePlanSection = forwardRef<PacePlanSectionHandle, PacePlanSection
     const minutes = Math.floor((totalSeconds % 3600) / 60);
     const seconds = totalSeconds % 60;
     return { hours, minutes, seconds };
+  };
+
+  const validatePacePlanSplits = (pacePlanId: string, splits: Split[]) => {
+    // Find the pace plan to get target time
+    const pacePlan = pacePlans.find(pp => pp.id === pacePlanId);
+    if (!pacePlan) return;
+
+    // Find the race to get distance
+    const race = races.find(r => r.id === pacePlan.raceId);
+    if (!race) return;
+
+    // Convert race distance to km if needed
+    const raceDistanceInKm = race.unit === 'km' ? race.distance : race.distance * 1.60934;
+    
+    // Run validation
+    const result = validateSplits(splits, raceDistanceInKm, pacePlan.targetTime);
+    
+    setValidationResults(prev => ({
+      ...prev,
+      [pacePlanId]: result,
+    }));
+  };
+
+  const getSplitValidationStatus = (pacePlanId: string, splitIndex: number): { hasError: boolean; hasWarning: boolean } => {
+    const validation = validationResults[pacePlanId];
+    if (!validation) return { hasError: false, hasWarning: false };
+
+    const hasError = validation.errors.some(error => error.splitIndex === splitIndex);
+    const hasWarning = validation.warnings.some(warning => warning.splitIndex === splitIndex);
+    
+    return { hasError, hasWarning };
   };
 
   return (
@@ -785,6 +851,24 @@ export const PacePlanSection = forwardRef<PacePlanSectionHandle, PacePlanSection
                       💡 Click merge icon on two splits to combine them. Click split icon to divide a split evenly.
                     </Typography>
 
+                    {/* Validation Feedback */}
+                    {validationResults[pacePlan.id] && (
+                      <Box sx={{ mb: 2 }}>
+                        {validationResults[pacePlan.id].errors.map((error, index) => (
+                          <Alert severity="error" key={`error-${index}`} sx={{ mb: 1 }}>
+                            {error.message}
+                            {error.splitIndex !== undefined && ` (Split ${error.splitIndex + 1})`}
+                          </Alert>
+                        ))}
+                        {validationResults[pacePlan.id].warnings.map((warning, index) => (
+                          <Alert severity="warning" key={`warning-${index}`} sx={{ mb: 1 }}>
+                            {warning.message}
+                            {warning.splitIndex !== undefined && ` (Split ${warning.splitIndex + 1})`}
+                          </Alert>
+                        ))}
+                      </Box>
+                    )}
+
                     <TableContainer component={Paper} variant="outlined">
                       <Table size="small">
                         <TableHead>
@@ -801,8 +885,10 @@ export const PacePlanSection = forwardRef<PacePlanSectionHandle, PacePlanSection
                             const displayPace = split.distance > 0 
                               ? (split.targetTime / 60) / convertDistance(split.distance, 'km', displayUnit)
                               : 0;
+                            const { hasError, hasWarning } = getSplitValidationStatus(pacePlan.id, index);
+                            const fieldColor = hasError ? 'error' : hasWarning ? 'warning' : undefined;
                             return (
-                            <TableRow key={index}>
+                            <TableRow key={index} sx={{ bgcolor: hasError ? 'error.light' : hasWarning ? 'warning.light' : undefined, opacity: hasError ? 0.1 : hasWarning ? 0.05 : undefined }}>
                               <TableCell>
                                 <TextField
                                   type="number"
@@ -816,11 +902,32 @@ export const PacePlanSection = forwardRef<PacePlanSectionHandle, PacePlanSection
                                   size="small"
                                   inputProps={{ step: 0.1, min: 0 }}
                                   sx={{ width: '100px' }}
+                                  color={fieldColor}
+                                  error={hasError}
                                 />
                               </TableCell>
                               <TableCell>
                                 {(() => {
                                   const { hours, minutes, seconds } = getTimeComponents(split.targetTime);
+                                  const { hasError, hasWarning } = getSplitValidationStatus(pacePlan.id, index);
+                                  const fieldColor = hasError ? theme.palette.error.main : 
+                                                   hasWarning ? theme.palette.warning.main : undefined;
+                                  const textFieldSx = {
+                                    width: '70px',
+                                    ...(fieldColor && {
+                                      '& .MuiOutlinedInput-root': {
+                                        '& fieldset': {
+                                          borderColor: fieldColor,
+                                        },
+                                        '&:hover fieldset': {
+                                          borderColor: fieldColor,
+                                        },
+                                        '&.Mui-focused fieldset': {
+                                          borderColor: fieldColor,
+                                        },
+                                      },
+                                    }),
+                                  };
                                   return (
                                     <Box sx={{ display: 'flex', gap: 0.5, alignItems: 'center' }}>
                                       <TextField
@@ -829,8 +936,9 @@ export const PacePlanSection = forwardRef<PacePlanSectionHandle, PacePlanSection
                                         onChange={(e) => handleSplitChange(pacePlan.id, index, 'targetTimeHours', e.target.value)}
                                         size="small"
                                         inputProps={{ min: 0 }}
-                                        sx={{ width: '70px' }}
+                                        sx={textFieldSx}
                                         label="H"
+                                        error={hasError}
                                       />
                                       <Typography>:</Typography>
                                       <TextField
@@ -839,8 +947,9 @@ export const PacePlanSection = forwardRef<PacePlanSectionHandle, PacePlanSection
                                         onChange={(e) => handleSplitChange(pacePlan.id, index, 'targetTimeMinutes', e.target.value)}
                                         size="small"
                                         inputProps={{ min: 0, max: 59 }}
-                                        sx={{ width: '70px' }}
+                                        sx={textFieldSx}
                                         label="M"
+                                        error={hasError}
                                       />
                                       <Typography>:</Typography>
                                       <TextField
@@ -849,8 +958,9 @@ export const PacePlanSection = forwardRef<PacePlanSectionHandle, PacePlanSection
                                         onChange={(e) => handleSplitChange(pacePlan.id, index, 'targetTimeSeconds', e.target.value)}
                                         size="small"
                                         inputProps={{ min: 0, max: 59 }}
-                                        sx={{ width: '70px' }}
+                                        sx={textFieldSx}
                                         label="S"
+                                        error={hasError}
                                       />
                                     </Box>
                                   );
@@ -910,6 +1020,7 @@ export const PacePlanSection = forwardRef<PacePlanSectionHandle, PacePlanSection
                         onClick={() => handleSaveSplits(pacePlan.id)}
                         variant="contained"
                         size="small"
+                        disabled={validationResults[pacePlan.id]?.errors.length > 0}
                       >
                         Save Changes
                       </Button>
