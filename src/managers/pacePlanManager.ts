@@ -96,10 +96,13 @@ export async function fetchPacePlans(raceId: string): Promise<PacePlan[]> {
         raceId: data.raceId,
         title: data.title,
         targetTime: data.targetTime,
-        splits: (data.splits || []).map((split: any) => ({
-          ...split,
-          elevation: split.elevation ?? 0, // Default elevation to 0 for backward compatibility
-        })),
+        splits: (data.splits || []).map((split: unknown) => {
+          const s = split as Partial<Split>;
+          return ({
+            ...s,
+            elevation: s.elevation ?? 0, // Default elevation to 0 for backward compatibility
+          } as Split);
+        }),
         spotifyPlaylistId: data.spotifyPlaylistId,
         tags: data.tags || [],
         createdAt: data.createdAt?.toDate?.(),

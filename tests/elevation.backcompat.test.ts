@@ -45,16 +45,23 @@ describe('PacePlanManager - Elevation Backward Compatibility', () => {
       }),
     };
 
+    type MockDoc = { id: string; data: () => Record<string, unknown> };
+
     const mockQuerySnapshot = {
-      forEach: (callback: (doc: any) => void) => {
-        callback(mockDoc);
+      forEach: (callback: (doc: MockDoc) => void) => {
+        callback(mockDoc as MockDoc);
       },
     };
 
-    (getDocs as any).mockResolvedValue(mockQuerySnapshot);
-    (collection as any).mockReturnValue('mock-collection');
-    (query as any).mockReturnValue('mock-query');
-    (where as any).mockReturnValue('mock-where');
+    const getDocsMock = getDocs as unknown as ReturnType<typeof vi.fn>;
+    const collectionMock = collection as unknown as ReturnType<typeof vi.fn>;
+    const queryMock = query as unknown as ReturnType<typeof vi.fn>;
+    const whereMock = where as unknown as ReturnType<typeof vi.fn>;
+
+    getDocsMock.mockResolvedValue(mockQuerySnapshot);
+    collectionMock.mockReturnValue('mock-collection');
+    queryMock.mockReturnValue('mock-query');
+    whereMock.mockReturnValue('mock-where');
 
     const pacePlans = await fetchPacePlans('race-1');
 
@@ -84,13 +91,16 @@ describe('PacePlanManager - Elevation Backward Compatibility', () => {
       }),
     };
 
+    type MockDoc = { id: string; data: () => Record<string, unknown> };
+
     const mockQuerySnapshot = {
-      forEach: (callback: (doc: any) => void) => {
-        callback(mockDoc);
+      forEach: (callback: (doc: MockDoc) => void) => {
+        callback(mockDoc as MockDoc);
       },
     };
 
-    (getDocs as any).mockResolvedValue(mockQuerySnapshot);
+    const getDocsMock = getDocs as unknown as ReturnType<typeof vi.fn>;
+    getDocsMock.mockResolvedValue(mockQuerySnapshot);
 
     const pacePlans = await fetchPacePlans('race-1');
 
@@ -114,13 +124,16 @@ describe('PacePlanManager - Elevation Backward Compatibility', () => {
       }),
     };
 
+    type MockDoc = { id: string; data: () => Record<string, unknown> };
+
     const mockQuerySnapshot = {
-      forEach: (callback: (doc: any) => void) => {
-        callback(mockDoc);
+      forEach: (callback: (doc: MockDoc) => void) => {
+        callback(mockDoc as MockDoc);
       },
     };
 
-    (getDocs as any).mockResolvedValue(mockQuerySnapshot);
+    const getDocsMock = getDocs as unknown as ReturnType<typeof vi.fn>;
+    getDocsMock.mockResolvedValue(mockQuerySnapshot);
 
     const pacePlans = await fetchPacePlans('race-1');
 
