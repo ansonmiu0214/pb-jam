@@ -41,15 +41,27 @@ export async function createRace(
   };
 
   const racesCollection = collection(db, 'users', userId, getRacesCollectionName());
-  const docRef = await addDoc(racesCollection, docData);
+  
+  try {
+    // Add timeout to addDoc operation to prevent hanging
+    const docRef = await Promise.race([
+      addDoc(racesCollection, docData),
+      new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('createRace operation timed out after 30 seconds')), 30000)
+      )
+    ]) as any;
 
-  const newRace = {
-    id: docRef.id,
-    ...docData,
-  } as Race;
+    const newRace = {
+      id: docRef.id,
+      ...docData,
+    } as Race;
 
-  console.log('[RaceManager] Race created successfully', newRace);
-  return newRace;
+    console.log('[RaceManager] Race created successfully', newRace);
+    return newRace;
+  } catch (error) {
+    console.error('[RaceManager] createRace error:', error);
+    throw error;
+  }
 }
 
 // fetchRaces(userId?) - if no userId provided, use current Firebase user

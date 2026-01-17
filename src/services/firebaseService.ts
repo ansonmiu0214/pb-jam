@@ -26,6 +26,9 @@ console.log('[Firebase] Config:', {
   useFirestoreEmulator,
   useAuthEmulator,
   projectId: firebaseConfig.projectId,
+  env_VITE_USE_FIRESTORE_EMULATOR: import.meta.env.VITE_USE_FIRESTORE_EMULATOR,
+  env_VITE_USE_AUTH_EMULATOR: import.meta.env.VITE_USE_AUTH_EMULATOR,
+  env_VITE_ENVIRONMENT: import.meta.env.VITE_ENVIRONMENT,
 });
 
 // Initialize Firebase
@@ -78,6 +81,18 @@ function getAuthEmulatorConfig(): { url: string } {
  */
 function initializeEmulator(): void {
   try {
+    // Extra safety check: Don't connect to emulators if we're in a production environment
+    const isProduction = import.meta.env.PROD || 
+                        import.meta.env.VITE_ENVIRONMENT === 'prod' || 
+                        window.location.hostname !== 'localhost';
+    
+    if (isProduction && (useAuthEmulator || useFirestoreEmulator)) {
+      console.warn('[Firebase] Emulator flags are set but running in production environment. Forcing production mode.');
+      console.log('[Firebase] Using production Firebase Auth and Firestore');
+      setupAuthStateListener();
+      return;
+    }
+
     if (useAuthEmulator) {
       console.log('[Firebase] Connecting to Auth emulator...');
       const authConfig = getAuthEmulatorConfig();
@@ -149,10 +164,14 @@ initializeEmulator();
 /**
  * Connect to Firebase Emulator for local development
  * Re-exported for compatibility with existing code
+ * Only connects if emulator environment variables are set
  */
 export function connectToEmulator(): void {
-  // Already initialized above
-  console.log('[Firebase] connectToEmulator() called (already initialized)');
+  if (useFirestoreEmulator || useAuthEmulator) {
+    console.log('[Firebase] connectToEmulator() called - emulators already configured during initialization');
+  } else {
+    console.log('[Firebase] connectToEmulator() called - using production Firebase (emulators disabled)');
+  }
 }
 
 /**
