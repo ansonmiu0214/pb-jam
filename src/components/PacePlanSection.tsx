@@ -30,7 +30,7 @@ import {
   Edit as EditIcon,
 
 } from '@mui/icons-material';
-import { createPacePlan, fetchPacePlans, deletePacePlan, updatePacePlanSplits, parseTimeToSeconds, calculatePace, formatTime } from '../managers/pacePlanManager';
+import { createPacePlan, fetchPacePlans, deletePacePlan, updatePacePlanSplits, parseTimeToSeconds, calculatePace } from '../managers/pacePlanManager';
 import { fetchRaces } from '../managers/raceManager';
 import { getCurrentUser } from '../services/userService';
 import { ConfirmDialog } from './ConfirmDialog';
@@ -318,7 +318,7 @@ export const PacePlanSection = forwardRef<PacePlanSectionHandle, PacePlanSection
     }
   };
 
-  const handleSplitChange = (pacePlanId: string, splitIndex: number, field: 'distance' | 'targetTime', value: string) => {
+  const handleSplitChange = (pacePlanId: string, splitIndex: number, field: 'distance' | 'targetTime' | 'targetTimeHours' | 'targetTimeMinutes' | 'targetTimeSeconds', value: string) => {
     setEditingSplits(prev => {
       const splits = [...(prev[pacePlanId] || [])];
       if (field === 'distance') {
@@ -332,6 +332,29 @@ export const PacePlanSection = forwardRef<PacePlanSectionHandle, PacePlanSection
           seconds = parseInt(value) || 0;
         }
         splits[splitIndex] = { ...splits[splitIndex], targetTime: seconds };
+      } else if (field === 'targetTimeHours' || field === 'targetTimeMinutes' || field === 'targetTimeSeconds') {
+        // Get current time components
+        const currentSeconds = splits[splitIndex].targetTime || 0;
+        const currentHours = Math.floor(currentSeconds / 3600);
+        const currentMinutes = Math.floor((currentSeconds % 3600) / 60);
+        const currentSecs = currentSeconds % 60;
+
+        let newHours = currentHours;
+        let newMinutes = currentMinutes;
+        let newSecs = currentSecs;
+
+        const numValue = parseInt(value) || 0;
+        
+        if (field === 'targetTimeHours') {
+          newHours = Math.max(0, numValue);
+        } else if (field === 'targetTimeMinutes') {
+          newMinutes = Math.max(0, Math.min(59, numValue));
+        } else if (field === 'targetTimeSeconds') {
+          newSecs = Math.max(0, Math.min(59, numValue));
+        }
+
+        const totalSeconds = newHours * 3600 + newMinutes * 60 + newSecs;
+        splits[splitIndex] = { ...splits[splitIndex], targetTime: totalSeconds };
       }
       // Recalculate pace
       splits[splitIndex].pace = calculatePace(splits[splitIndex].distance, splits[splitIndex].targetTime);
@@ -345,7 +368,7 @@ export const PacePlanSection = forwardRef<PacePlanSectionHandle, PacePlanSection
       const splits = [...(prev[pacePlanId] || [])];
       splits.push({
         distance: 5, // Default 5km
-        targetTime: 1500, // Default 25 minutes
+        targetTime: 25 * 60, // Default 25 minutes (1500 seconds)
         pace: 5, // Default 5 min/km
       });
       return { ...prev, [pacePlanId]: splits };
@@ -403,6 +426,13 @@ export const PacePlanSection = forwardRef<PacePlanSectionHandle, PacePlanSection
       return `${hours}h ${mins}m ${secs}s`;
     }
     return `${mins}m ${secs}s`;
+  };
+
+  const getTimeComponents = (totalSeconds: number): { hours: number; minutes: number; seconds: number } => {
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
+    return { hours, minutes, seconds };
   };
 
   return (
@@ -671,7 +701,7 @@ export const PacePlanSection = forwardRef<PacePlanSectionHandle, PacePlanSection
                         <TableHead>
                           <TableRow>
                             <TableCell>Distance ({displayUnit})</TableCell>
-                            <TableCell>Target Time</TableCell>
+                            <TableCell>Target Time (H:M:S)</TableCell>
                             <TableCell>Pace (min/{displayUnit})</TableCell>
                             <TableCell width={50}>Actions</TableCell>
                           </TableRow>
@@ -700,13 +730,42 @@ export const PacePlanSection = forwardRef<PacePlanSectionHandle, PacePlanSection
                                 />
                               </TableCell>
                               <TableCell>
-                                <TextField
-                                  value={split.targetTime > 3600 ? formatTime(split.targetTime) : split.targetTime.toString()}
-                                  onChange={(e) => handleSplitChange(pacePlan.id, index, 'targetTime', e.target.value)}
-                                  size="small"
-                                  placeholder="MM:SS or seconds"
-                                  sx={{ width: '120px' }}
-                                />
+                                {(() => {
+                                  const { hours, minutes, seconds } = getTimeComponents(split.targetTime);
+                                  return (
+                                    <Box sx={{ display: 'flex', gap: 0.5, alignItems: 'center' }}>
+                                      <TextField
+                                        type="number"
+                                        value={hours}
+                                        onChange={(e) => handleSplitChange(pacePlan.id, index, 'targetTimeHours', e.target.value)}
+                                        size="small"
+                                        inputProps={{ min: 0 }}
+                                        sx={{ width: '70px' }}
+                                        label="H"
+                                      />
+                                      <Typography>:</Typography>
+                                      <TextField
+                                        type="number"
+                                        value={minutes.toString().padStart(2, '0')}
+                                        onChange={(e) => handleSplitChange(pacePlan.id, index, 'targetTimeMinutes', e.target.value)}
+                                        size="small"
+                                        inputProps={{ min: 0, max: 59 }}
+                                        sx={{ width: '70px' }}
+                                        label="M"
+                                      />
+                                      <Typography>:</Typography>
+                                      <TextField
+                                        type="number"
+                                        value={seconds.toString().padStart(2, '0')}
+                                        onChange={(e) => handleSplitChange(pacePlan.id, index, 'targetTimeSeconds', e.target.value)}
+                                        size="small"
+                                        inputProps={{ min: 0, max: 59 }}
+                                        sx={{ width: '70px' }}
+                                        label="S"
+                                      />
+                                    </Box>
+                                  );
+                                })()}
                               </TableCell>
                               <TableCell>
                                 <Typography variant="body2" color="text.secondary">
