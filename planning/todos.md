@@ -203,7 +203,7 @@ This todo.md is a thorough checklist to guide your implementation of the Spotify
 
 ### Elevation & Distance Visualization
 * [x] **Persist elevation data (Prompt 9.1)** - Elevation input fields added to split editing UI with backward compatibility
-* [ ] **Render elevation on timeline (Prompt 9.2)**
+* [x] **Render elevation on timeline (Prompt 9.2)** - Color-coded elevation visualization with legend and performance optimization
 * [ ] **Distance markers (Prompt 9.3)**
 
 ### Undo/Redo System

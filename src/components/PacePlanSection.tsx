@@ -425,6 +425,7 @@ export const PacePlanSection = forwardRef<PacePlanSectionHandle, PacePlanSection
     const splits = editingSplits[pacePlanId];
     if (!splits) return;
 
+    setSubmitting(true);
     try {
       await updatePacePlanSplits(pacePlanId, splits);
       
@@ -454,6 +455,8 @@ export const PacePlanSection = forwardRef<PacePlanSectionHandle, PacePlanSection
     } catch (err: unknown) {
       console.error('Failed to save splits:', err);
       setError('Failed to save splits. Please try again.');
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -879,7 +882,7 @@ export const PacePlanSection = forwardRef<PacePlanSectionHandle, PacePlanSection
                             <TableCell>Distance ({displayUnit})</TableCell>
                             <TableCell>Target Time (H:M:S)</TableCell>
                             <TableCell>Pace (min/{displayUnit})</TableCell>
-                            <TableCell>Elevation (m)</TableCell>
+                            <TableCell>Elevation Change (m)</TableCell>
                             <TableCell width={150}>Actions</TableCell>
                           </TableRow>
                         </TableHead>
@@ -985,6 +988,8 @@ export const PacePlanSection = forwardRef<PacePlanSectionHandle, PacePlanSection
                                   sx={{ width: '80px' }}
                                   color={fieldColor}
                                   error={hasError}
+                                  placeholder="0"
+                                  title="Elevation change for this split (+ for uphill, - for downhill)"
                                 />
                               </TableCell>
                               <TableCell>
@@ -1036,9 +1041,10 @@ export const PacePlanSection = forwardRef<PacePlanSectionHandle, PacePlanSection
                         onClick={() => handleSaveSplits(pacePlan.id)}
                         variant="contained"
                         size="small"
-                        disabled={validationResults[pacePlan.id]?.errors.length > 0}
+                        disabled={validationResults[pacePlan.id]?.errors.length > 0 || submitting}
+                        startIcon={submitting ? <CircularProgress size={16} /> : undefined}
                       >
-                        Save Changes
+                        {submitting ? 'Saving...' : 'Save Changes'}
                       </Button>
                     </Box>
                   </Box>

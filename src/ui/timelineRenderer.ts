@@ -24,6 +24,9 @@ interface CanvasConfig {
     text: string;
     dragHighlight: string;
     insertionLine: string;
+    elevationUphill: string;
+    elevationDownhill: string;
+    elevationFlat: string;
   };
 }
 
@@ -59,6 +62,9 @@ const DEFAULT_CONFIG: CanvasConfig = {
     text: '#ffffff',
     dragHighlight: '#ff6b35',
     insertionLine: '#ff6b35',
+    elevationUphill: '#ff4444', // Red for uphill
+    elevationDownhill: '#44aa44', // Green for downhill
+    elevationFlat: '#888888', // Gray for flat
   },
 };
 
@@ -128,6 +134,9 @@ export function renderTimelineWithDragState(
 
   // Draw race splits
   drawRaceSplits(ctx, drawArea, data, finalConfig, totalDuration);
+
+  // Draw elevation legend
+  drawElevationLegend(ctx, drawArea, finalConfig);
 
   // Draw song tracks if available and return track rectangles
   let trackRectangles: TrackRectangle[] = [];
@@ -335,6 +344,7 @@ function drawRaceSplits(
   let currentTime = 0;
   const splitX = drawArea.x + 60; // Start after time axis and labels
   const splitWidth = 120; // Fixed width for split rectangles
+  const elevationBarWidth = 8; // Width of elevation indicator bar
 
   data.splits.forEach((split, _index) => {
     const splitHeight = (split.targetTime / totalDuration) * drawArea.height;
@@ -347,6 +357,25 @@ function drawRaceSplits(
     ctx.strokeStyle = config.colors.splitBorder;
     ctx.lineWidth = 1;
     ctx.strokeRect(splitX, y, splitWidth, splitHeight);
+
+    // Draw elevation indicator bar on the left side of split
+    const elevationBarX = splitX - elevationBarWidth - 2;
+    const elevation = split.elevation || 0;
+    let elevationColor = config.colors.elevationFlat;
+    
+    if (elevation > 0) {
+      elevationColor = config.colors.elevationUphill; // Red for uphill
+    } else if (elevation < 0) {
+      elevationColor = config.colors.elevationDownhill; // Green for downhill
+    }
+    
+    ctx.fillStyle = elevationColor;
+    ctx.fillRect(elevationBarX, y, elevationBarWidth, splitHeight);
+    
+    // Draw elevation bar border
+    ctx.strokeStyle = config.colors.splitBorder;
+    ctx.lineWidth = 1;
+    ctx.strokeRect(elevationBarX, y, elevationBarWidth, splitHeight);
 
     // Draw split label
     ctx.fillStyle = config.colors.text;
@@ -367,6 +396,14 @@ function drawRaceSplits(
       const minutes = Math.floor(split.targetTime / 60);
       const seconds = split.targetTime % 60;
       ctx.fillText(`${minutes}:${seconds.toString().padStart(2, '0')}`, centerX, centerY + 8);
+      
+      // Elevation label (if there's space)
+      if (splitHeight > 50 && elevation !== 0) {
+        ctx.font = '9px Arial';
+        ctx.fillStyle = elevationColor;
+        const elevationText = elevation > 0 ? `+${elevation}m` : `${elevation}m`;
+        ctx.fillText(elevationText, centerX, centerY + 20);
+      }
     }
 
     currentTime += split.targetTime;
@@ -559,15 +596,68 @@ export function createDragState(): DragState {
 
 
 /**
+ * Draw elevation legend
+ */
+function drawElevationLegend(
+  ctx: CanvasRenderingContext2D,
+  drawArea: { x: number; y: number; width: number; height: number },
+  config: CanvasConfig
+): void {
+  const legendX = drawArea.x + drawArea.width - 80;
+  const legendY = drawArea.y + 10;
+  const legendItemHeight = 16;
+  const legendBarWidth = 12;
+  const legendBarHeight = 12;
+
+  // Legend background
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+  ctx.fillRect(legendX - 5, legendY - 5, 75, 60);
+
+  ctx.strokeStyle = config.colors.splitBorder;
+  ctx.lineWidth = 1;
+  ctx.strokeRect(legendX - 5, legendY - 5, 75, 60);
+
+  // Legend title
+  ctx.fillStyle = config.colors.text;
+  ctx.font = 'bold 10px Arial';
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'top';
+  ctx.fillText('Elevation', legendX, legendY);
+
+  // Legend items
+  const legendItems = [
+    { color: config.colors.elevationUphill, label: 'Uphill', y: legendY + legendItemHeight },
+    { color: config.colors.elevationFlat, label: 'Flat', y: legendY + legendItemHeight * 2 },
+    { color: config.colors.elevationDownhill, label: 'Downhill', y: legendY + legendItemHeight * 3 },
+  ];
+
+  ctx.font = '9px Arial';
+  ctx.textBaseline = 'middle';
+
+  legendItems.forEach(item => {
+    // Draw color bar
+    ctx.fillStyle = item.color;
+    ctx.fillRect(legendX, item.y, legendBarWidth, legendBarHeight);
+    
+    ctx.strokeStyle = config.colors.splitBorder;
+    ctx.strokeRect(legendX, item.y, legendBarWidth, legendBarHeight);
+    
+    // Draw label
+    ctx.fillStyle = config.colors.text;
+    ctx.fillText(item.label, legendX + legendBarWidth + 5, item.y + legendBarHeight / 2);
+  });
+}
+
+/**
  * Create mock data for testing
  */
 export function createMockTimelineData(): TimelineData {
   const splits: Split[] = [
-    { distance: 5, targetTime: 1500, pace: 5 }, // 25 minutes, 5 min/km
-    { distance: 5, targetTime: 1440, pace: 4.8 }, // 24 minutes, 4.8 min/km
-    { distance: 5, targetTime: 1380, pace: 4.6 }, // 23 minutes, 4.6 min/km
-    { distance: 5, targetTime: 1320, pace: 4.4 }, // 22 minutes, 4.4 min/km
-    { distance: 2.2, targetTime: 600, pace: 4.5 }, // 10 minutes, ~4.5 min/km
+    { distance: 5, targetTime: 1500, pace: 5, elevation: 50 }, // 25 minutes, 5 min/km, uphill
+    { distance: 5, targetTime: 1440, pace: 4.8, elevation: 0 }, // 24 minutes, 4.8 min/km, flat
+    { distance: 5, targetTime: 1380, pace: 4.6, elevation: -30 }, // 23 minutes, 4.6 min/km, downhill
+    { distance: 5, targetTime: 1320, pace: 4.4, elevation: 25 }, // 22 minutes, 4.4 min/km, uphill
+    { distance: 2.2, targetTime: 600, pace: 4.5, elevation: -10 }, // 10 minutes, ~4.5 min/km, slight downhill
   ];
 
   const tracks: SpotifyTrack[] = [
