@@ -336,7 +336,7 @@ Implementation details:
 ```
 
 ```text
-# Prompt 8.3 — Merge & split helpers
+# Prompt 8.3 — Merge & split helpers (COMPLETED)
 Implement split manipulation helpers in pacePlanManager.ts.
 
 Functions:
@@ -349,6 +349,18 @@ Behavior:
 - Return new split arrays (no mutation)
 
 Then wire these helpers to the split editing UI.
+
+**Result:** Split manipulation helpers successfully implemented with:
+- mergeSplits() function that combines two splits with proper distance/time summation
+- splitSplit() function that divides a split evenly by default strategy
+- Proper error handling for invalid indices and edge cases
+- Elevation handling: merge takes average, split preserves original elevation
+- Complete UI integration in PacePlanSection with merge/split/delete buttons in Actions column
+- Visual feedback: merge button highlights when split is selected for merging
+- Intuitive workflow: click merge on two splits to combine them, click split to divide
+- Helper text explaining the merge/split workflow to users
+- Comprehensive test coverage in pacePlanManager.validation.test.ts
+- Functions return new arrays without mutating original data
 ```
 
 ```text

@@ -28,9 +28,10 @@ import {
   Delete as DeleteIcon,
   Add as AddIcon,
   Edit as EditIcon,
-
+  CallMerge as MergeIcon,
+  CallSplit as SplitIcon,
 } from '@mui/icons-material';
-import { createPacePlan, fetchPacePlans, deletePacePlan, updatePacePlanSplits, parseTimeToSeconds, calculatePace } from '../managers/pacePlanManager';
+import { createPacePlan, fetchPacePlans, deletePacePlan, updatePacePlanSplits, parseTimeToSeconds, calculatePace, mergeSplits, splitSplit } from '../managers/pacePlanManager';
 import { fetchRaces } from '../managers/raceManager';
 import { getCurrentUser } from '../services/userService';
 import { ConfirmDialog } from './ConfirmDialog';
@@ -70,6 +71,7 @@ export const PacePlanSection = forwardRef<PacePlanSectionHandle, PacePlanSection
   const [pacePlanToDelete, setPacePlanToDelete] = useState<PacePlan | null>(null);
   const [expandedPacePlan, setExpandedPacePlan] = useState<string | null>(null);
   const [editingSplits, setEditingSplits] = useState<{[key: string]: Split[]}>({});
+  const [selectedSplitsForMerge, setSelectedSplitsForMerge] = useState<{[key: string]: number[]}>({});
   const { unit: displayUnit, convertDistance } = useUnit();
   const [formData, setPacePlanFormData] = useState<PacePlanFormData>({
     raceId: '',
@@ -132,18 +134,20 @@ export const PacePlanSection = forwardRef<PacePlanSectionHandle, PacePlanSection
     }
   };
 
-  const loadPacePlans = async (raceId: string) => {
+  const loadPacePlans = async (raceId: string): Promise<PacePlan[]> => {
     const user = getCurrentUser();
-    if (!user) return;
+    if (!user) return [];
 
     try {
       console.log('[PacePlanSection] Loading pace plans for race:', raceId);
       const pacePlanList = await fetchPacePlans(raceId);
       console.log('[PacePlanSection] Loaded', pacePlanList.length, 'pace plans');
       setPacePlans(pacePlanList);
+      return pacePlanList;
     } catch (err: unknown) {
       console.error('Failed to load pace plans:', err);
       setError('Failed to load pace plans. Please try again.');
+      return [];
     }
   };
 
@@ -309,11 +313,20 @@ export const PacePlanSection = forwardRef<PacePlanSectionHandle, PacePlanSection
         delete updated[pacePlan.id];
         return updated;
       });
+      setSelectedSplitsForMerge(prev => {
+        const updated = { ...prev };
+        delete updated[pacePlan.id];
+        return updated;
+      });
     } else {
       setExpandedPacePlan(pacePlan.id);
       setEditingSplits(prev => ({
         ...prev,
         [pacePlan.id]: [...pacePlan.splits],
+      }));
+      setSelectedSplitsForMerge(prev => ({
+        ...prev,
+        [pacePlan.id]: [],
       }));
     }
   };
@@ -392,11 +405,22 @@ export const PacePlanSection = forwardRef<PacePlanSectionHandle, PacePlanSection
       
       // Refresh pace plans to get updated data
       if (selectedRaceId) {
-        await loadPacePlans(selectedRaceId);
+        const updatedPacePlans = await loadPacePlans(selectedRaceId);
+        
+        // Find the updated pace plan and refresh the timeline
+        const updatedPacePlan = updatedPacePlans.find(pp => pp.id === pacePlanId);
+        if (updatedPacePlan && onPacePlanSelect) {
+          onPacePlanSelect(updatedPacePlan);
+        }
       }
       
       // Clear editing state
       setEditingSplits(prev => {
+        const updated = { ...prev };
+        delete updated[pacePlanId];
+        return updated;
+      });
+      setSelectedSplitsForMerge(prev => {
         const updated = { ...prev };
         delete updated[pacePlanId];
         return updated;
@@ -414,7 +438,68 @@ export const PacePlanSection = forwardRef<PacePlanSectionHandle, PacePlanSection
       delete updated[pacePlanId];
       return updated;
     });
+    setSelectedSplitsForMerge(prev => {
+      const updated = { ...prev };
+      delete updated[pacePlanId];
+      return updated;
+    });
     setExpandedPacePlan(null);
+  };
+
+  const handleMergeSplits = (pacePlanId: string, indexA: number, indexB: number) => {
+    setEditingSplits(prev => {
+      const currentSplits = prev[pacePlanId] || [];
+      try {
+        const mergedSplits = mergeSplits(currentSplits, indexA, indexB);
+        return { ...prev, [pacePlanId]: mergedSplits };
+      } catch (err) {
+        console.error('Failed to merge splits:', err);
+        setError('Cannot merge these splits. Please check your selection.');
+        return prev;
+      }
+    });
+  };
+
+  const handleSplitSplit = (pacePlanId: string, index: number) => {
+    setEditingSplits(prev => {
+      const currentSplits = prev[pacePlanId] || [];
+      try {
+        const splitSplits = splitSplit(currentSplits, index, 'even');
+        return { ...prev, [pacePlanId]: splitSplits };
+      } catch (err) {
+        console.error('Failed to split split:', err);
+        setError('Cannot split this split. Please try again.');
+        return prev;
+      }
+    });
+  };
+
+  const handleSelectSplitForMerge = (pacePlanId: string, index: number) => {
+    setSelectedSplitsForMerge(prev => {
+      const currentSelected = prev[pacePlanId] || [];
+      
+      // If already selected, deselect it
+      if (currentSelected.includes(index)) {
+        const newSelected = currentSelected.filter(i => i !== index);
+        return { ...prev, [pacePlanId]: newSelected };
+      }
+      
+      // If we have 2 selected, replace with new selection
+      if (currentSelected.length >= 2) {
+        return { ...prev, [pacePlanId]: [index] };
+      }
+      
+      // Add to selection
+      const newSelected = [...currentSelected, index];
+      
+      // If we have exactly 2 selected, perform merge
+      if (newSelected.length === 2) {
+        handleMergeSplits(pacePlanId, newSelected[0], newSelected[1]);
+        return { ...prev, [pacePlanId]: [] }; // Clear selection after merge
+      }
+      
+      return { ...prev, [pacePlanId]: newSelected };
+    });
   };
 
   const formatTime = (seconds: number): string => {
@@ -696,6 +781,10 @@ export const PacePlanSection = forwardRef<PacePlanSectionHandle, PacePlanSection
                       </Button>
                     </Box>
 
+                    <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                      💡 Click merge icon on two splits to combine them. Click split icon to divide a split evenly.
+                    </Typography>
+
                     <TableContainer component={Paper} variant="outlined">
                       <Table size="small">
                         <TableHead>
@@ -703,7 +792,7 @@ export const PacePlanSection = forwardRef<PacePlanSectionHandle, PacePlanSection
                             <TableCell>Distance ({displayUnit})</TableCell>
                             <TableCell>Target Time (H:M:S)</TableCell>
                             <TableCell>Pace (min/{displayUnit})</TableCell>
-                            <TableCell width={50}>Actions</TableCell>
+                            <TableCell width={150}>Actions</TableCell>
                           </TableRow>
                         </TableHead>
                         <TableBody>
@@ -773,14 +862,34 @@ export const PacePlanSection = forwardRef<PacePlanSectionHandle, PacePlanSection
                                 </Typography>
                               </TableCell>
                               <TableCell>
-                                <IconButton
-                                  onClick={() => handleRemoveSplit(pacePlan.id, index)}
-                                  color="error"
-                                  size="small"
-                                  disabled={(editingSplits[pacePlan.id] || []).length <= 1}
-                                >
-                                  <DeleteIcon />
-                                </IconButton>
+                                <Box sx={{ display: 'flex', gap: 0.5 }}>
+                                  <IconButton
+                                    onClick={() => handleSelectSplitForMerge(pacePlan.id, index)}
+                                    color={selectedSplitsForMerge[pacePlan.id]?.includes(index) ? 'primary' : 'default'}
+                                    size="small"
+                                    title="Select for Merge"
+                                    disabled={(editingSplits[pacePlan.id] || []).length <= 1}
+                                  >
+                                    <MergeIcon />
+                                  </IconButton>
+                                  <IconButton
+                                    onClick={() => handleSplitSplit(pacePlan.id, index)}
+                                    color="secondary"
+                                    size="small"
+                                    title="Split This Split"
+                                  >
+                                    <SplitIcon />
+                                  </IconButton>
+                                  <IconButton
+                                    onClick={() => handleRemoveSplit(pacePlan.id, index)}
+                                    color="error"
+                                    size="small"
+                                    title="Delete Split"
+                                    disabled={(editingSplits[pacePlan.id] || []).length <= 1}
+                                  >
+                                    <DeleteIcon />
+                                  </IconButton>
+                                </Box>
                               </TableCell>
                             </TableRow>
                             );

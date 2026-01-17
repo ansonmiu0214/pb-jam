@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { validateSplits, areSplitsValid } from '../src/managers/pacePlanManager';
+import { validateSplits, areSplitsValid, mergeSplits, splitSplit } from '../src/managers/pacePlanManager';
 import type { Split } from '../src/models/types';
 
 describe('PacePlanManager - Split Validation', () => {
@@ -170,6 +170,129 @@ describe('PacePlanManager - Split Validation', () => {
       const isValid = areSplitsValid(splits, raceDistance, targetTime);
 
       expect(isValid).toBe(false);
+    });
+  });
+
+  describe('mergeSplits', () => {
+    it('should merge two adjacent splits correctly', () => {
+      const splits: Split[] = [
+        { distance: 5, targetTime: 1500, pace: 5, elevation: 10 },
+        { distance: 3, targetTime: 900, pace: 5, elevation: 20 },
+        { distance: 2, targetTime: 600, pace: 5, elevation: 0 },
+      ];
+
+      const result = mergeSplits(splits, 0, 1);
+
+      expect(result).toHaveLength(2);
+      expect(result[0].distance).toBe(8); // 5 + 3
+      expect(result[0].targetTime).toBe(2400); // 1500 + 900
+      expect(result[0].elevation).toBe(15); // Average of 10 and 20
+      expect(result[0].pace).toBeCloseTo(5); // 2400s / 60 / 8km = 5 min/km
+      expect(result[1]).toEqual(splits[2]); // Third split unchanged
+    });
+
+    it('should merge non-adjacent splits correctly', () => {
+      const splits: Split[] = [
+        { distance: 5, targetTime: 1500, pace: 5, elevation: 10 },
+        { distance: 3, targetTime: 900, pace: 5, elevation: 20 },
+        { distance: 2, targetTime: 600, pace: 5, elevation: 0 },
+      ];
+
+      const result = mergeSplits(splits, 0, 2);
+
+      expect(result).toHaveLength(2);
+      expect(result[0].distance).toBe(7); // 5 + 2
+      expect(result[0].targetTime).toBe(2100); // 1500 + 600
+      expect(result[0].elevation).toBe(5); // Average of 10 and 0
+      expect(result[1]).toEqual(splits[1]); // Middle split unchanged
+    });
+
+    it('should handle splits with undefined elevation', () => {
+      const splits: Split[] = [
+        { distance: 5, targetTime: 1500, pace: 5 }, // No elevation
+        { distance: 3, targetTime: 900, pace: 5, elevation: 20 },
+      ];
+
+      const result = mergeSplits(splits, 0, 1);
+
+      expect(result).toHaveLength(1);
+      expect(result[0].elevation).toBe(20); // Takes the defined elevation
+    });
+
+    it('should throw error for invalid indices', () => {
+      const splits: Split[] = [
+        { distance: 5, targetTime: 1500, pace: 5, elevation: 0 },
+      ];
+
+      expect(() => mergeSplits(splits, 0, 2)).toThrow('Invalid split indices for merge operation');
+      expect(() => mergeSplits(splits, -1, 0)).toThrow('Invalid split indices for merge operation');
+    });
+
+    it('should throw error when merging split with itself', () => {
+      const splits: Split[] = [
+        { distance: 5, targetTime: 1500, pace: 5, elevation: 0 },
+      ];
+
+      expect(() => mergeSplits(splits, 0, 0)).toThrow('Cannot merge a split with itself');
+    });
+  });
+
+  describe('splitSplit', () => {
+    it('should split a split evenly', () => {
+      const splits: Split[] = [
+        { distance: 10, targetTime: 3000, pace: 5, elevation: 100 },
+        { distance: 5, targetTime: 1500, pace: 5, elevation: 50 },
+      ];
+
+      const result = splitSplit(splits, 0, 'even');
+
+      expect(result).toHaveLength(3);
+      expect(result[0].distance).toBe(5); // Half of 10
+      expect(result[0].targetTime).toBe(1500); // Half of 3000
+      expect(result[0].elevation).toBe(100); // Same as original
+      expect(result[0].pace).toBeCloseTo(5); // 1500s / 60 / 5km = 5 min/km
+      
+      expect(result[1].distance).toBe(5); // Half of 10
+      expect(result[1].targetTime).toBe(1500); // Half of 3000
+      expect(result[1].elevation).toBe(100); // Same as original
+      expect(result[1].pace).toBeCloseTo(5);
+      
+      expect(result[2]).toEqual(splits[1]); // Second split unchanged
+    });
+
+    it('should handle split with undefined elevation', () => {
+      const splits: Split[] = [
+        { distance: 10, targetTime: 3000, pace: 5 }, // No elevation
+      ];
+
+      const result = splitSplit(splits, 0, 'even');
+
+      expect(result).toHaveLength(2);
+      expect(result[0].elevation).toBe(0); // Default to 0
+      expect(result[1].elevation).toBe(0); // Default to 0
+    });
+
+    it('should use even strategy by default', () => {
+      const splits: Split[] = [
+        { distance: 10, targetTime: 3000, pace: 5, elevation: 0 },
+      ];
+
+      const result = splitSplit(splits, 0); // No strategy specified
+
+      expect(result).toHaveLength(2);
+      expect(result[0].distance).toBe(5);
+      expect(result[0].targetTime).toBe(1500);
+      expect(result[1].distance).toBe(5);
+      expect(result[1].targetTime).toBe(1500);
+    });
+
+    it('should throw error for invalid index', () => {
+      const splits: Split[] = [
+        { distance: 5, targetTime: 1500, pace: 5, elevation: 0 },
+      ];
+
+      expect(() => splitSplit(splits, 2)).toThrow('Invalid split index for split operation');
+      expect(() => splitSplit(splits, -1)).toThrow('Invalid split index for split operation');
     });
   });
 });

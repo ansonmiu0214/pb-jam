@@ -306,3 +306,90 @@ export function areSplitsValid(
   const result = validateSplits(splits, raceDistance, targetTime);
   return result.errors.length === 0;
 }
+
+/**
+ * Merge two splits into one
+ * @param splits - Array of splits
+ * @param indexA - Index of first split to merge
+ * @param indexB - Index of second split to merge
+ * @returns New split array with merged splits (no mutation)
+ */
+export function mergeSplits(splits: Split[], indexA: number, indexB: number): Split[] {
+  if (indexA < 0 || indexA >= splits.length || indexB < 0 || indexB >= splits.length) {
+    throw new Error('Invalid split indices for merge operation');
+  }
+
+  if (indexA === indexB) {
+    throw new Error('Cannot merge a split with itself');
+  }
+
+  // Ensure indexA is the smaller index for consistent behavior
+  const firstIndex = Math.min(indexA, indexB);
+  const secondIndex = Math.max(indexA, indexB);
+
+  const newSplits = [...splits];
+  const splitA = newSplits[firstIndex];
+  const splitB = newSplits[secondIndex];
+
+  // Create merged split with combined distance, time, and average elevation
+  const mergedSplit: Split = {
+    distance: splitA.distance + splitB.distance,
+    targetTime: splitA.targetTime + splitB.targetTime,
+    pace: 0, // Will be recalculated
+    elevation: splitA.elevation && splitB.elevation 
+      ? Math.round((splitA.elevation + splitB.elevation) / 2)
+      : (splitA.elevation || splitB.elevation || 0),
+  };
+
+  // Recalculate pace for the merged split
+  mergedSplit.pace = calculatePace(mergedSplit.distance, mergedSplit.targetTime);
+
+  // Remove both splits and insert the merged one at the first position
+  newSplits.splice(secondIndex, 1); // Remove second split first (higher index)
+  newSplits.splice(firstIndex, 1); // Remove first split
+  newSplits.splice(firstIndex, 0, mergedSplit); // Insert merged split
+
+  return newSplits;
+}
+
+/**
+ * Split one split into two
+ * @param splits - Array of splits
+ * @param index - Index of split to divide
+ * @param strategy - Strategy for splitting ("even" divides distance and time equally)
+ * @returns New split array with split divided (no mutation)
+ */
+export function splitSplit(splits: Split[], index: number, strategy: 'even' = 'even'): Split[] {
+  if (index < 0 || index >= splits.length) {
+    throw new Error('Invalid split index for split operation');
+  }
+
+  const newSplits = [...splits];
+  const originalSplit = newSplits[index];
+
+  if (strategy === 'even') {
+    // Create two splits with half the distance and time each
+    const firstSplit: Split = {
+      distance: originalSplit.distance / 2,
+      targetTime: originalSplit.targetTime / 2,
+      pace: 0, // Will be recalculated
+      elevation: originalSplit.elevation || 0,
+    };
+
+    const secondSplit: Split = {
+      distance: originalSplit.distance / 2,
+      targetTime: originalSplit.targetTime / 2,
+      pace: 0, // Will be recalculated
+      elevation: originalSplit.elevation || 0,
+    };
+
+    // Recalculate pace for both new splits
+    firstSplit.pace = calculatePace(firstSplit.distance, firstSplit.targetTime);
+    secondSplit.pace = calculatePace(secondSplit.distance, secondSplit.targetTime);
+
+    // Replace the original split with the two new ones
+    newSplits.splice(index, 1, firstSplit, secondSplit);
+  }
+
+  return newSplits;
+}

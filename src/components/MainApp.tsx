@@ -149,7 +149,7 @@ export const MainApp: React.FC = () => {
           <Grid item xs={12} md={6}>
             <RaceSection onRaceCreated={handleRaceCreated} onRaceDeleted={handleRaceDeleted} />
           </Grid>
-          <Grid item xs={12} md={6}>
+          <Grid item xs={12}>
             <PacePlanSection 
               ref={pacePlanSectionRef} 
               onPacePlanSelect={setSelectedPacePlan} 
