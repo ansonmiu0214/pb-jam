@@ -1,6 +1,6 @@
 // Pace plan management module
 import { db } from '../services/firebaseService';
-import { PacePlan, Split } from '../models/types';
+import { PacePlan, Split, ValidationResult, ValidationError, ValidationWarning } from '../models/types';
 import { getUserId } from '../services/userService';
 import {
   collection,
@@ -218,4 +218,91 @@ export function parseTimeToSeconds(timeString: string): number {
   }
   
   return 0; // Invalid format
+}
+
+/**
+ * Validate splits for a pace plan
+ * @param splits - Array of splits to validate
+ * @param raceDistance - Total race distance in km
+ * @param targetTime - Target time for the pace plan in seconds
+ * @returns ValidationResult with errors and warnings
+ */
+export function validateSplits(
+  splits: Split[],
+  raceDistance: number,
+  targetTime: number
+): ValidationResult {
+  const errors: ValidationError[] = [];
+  const warnings: ValidationWarning[] = [];
+
+  // Check for empty splits
+  if (splits.length === 0) {
+    errors.push({
+      field: 'splits',
+      message: 'At least one split is required',
+    });
+    return { errors, warnings };
+  }
+
+  // Validate individual splits
+  splits.forEach((split, index) => {
+    // Check minimum distance
+    if (split.distance < 0.1) {
+      errors.push({
+        field: 'distance',
+        message: 'Split distance must be at least 0.1 km',
+        splitIndex: index,
+      });
+    }
+
+    // Check for negative target time
+    if (split.targetTime <= 0) {
+      errors.push({
+        field: 'targetTime',
+        message: 'Split target time must be greater than 0',
+        splitIndex: index,
+      });
+    }
+
+    // Note: Elevation can be negative, so no validation needed
+  });
+
+  // Calculate totals
+  const totalDistance = splits.reduce((sum, split) => sum + split.distance, 0);
+  const totalTime = splits.reduce((sum, split) => sum + split.targetTime, 0);
+
+  // Check if total distance equals race distance (within small tolerance for floating point precision)
+  const distanceTolerance = 0.01; // 10 meters tolerance
+  if (Math.abs(totalDistance - raceDistance) > distanceTolerance) {
+    errors.push({
+      field: 'distance',
+      message: `Total split distance (${totalDistance.toFixed(2)} km) must equal race distance (${raceDistance.toFixed(2)} km)`,
+    });
+  }
+
+  // Check if total time equals target time
+  if (totalTime !== targetTime) {
+    errors.push({
+      field: 'targetTime',
+      message: `Total split time (${totalTime}s) must equal pace plan target time (${targetTime}s)`,
+    });
+  }
+
+  return { errors, warnings };
+}
+
+/**
+ * Check if splits are valid (no blocking errors)
+ * @param splits - Array of splits to validate
+ * @param raceDistance - Total race distance in km
+ * @param targetTime - Target time for the pace plan in seconds
+ * @returns True if valid (no errors), false if there are blocking errors
+ */
+export function areSplitsValid(
+  splits: Split[],
+  raceDistance: number,
+  targetTime: number
+): boolean {
+  const result = validateSplits(splits, raceDistance, targetTime);
+  return result.errors.length === 0;
 }

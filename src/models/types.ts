@@ -103,3 +103,29 @@ export interface User {
   displayName?: string;
   spotifyId?: string;
 }
+
+/**
+ * Validation error for splits
+ */
+export interface ValidationError {
+  field: string;
+  message: string;
+  splitIndex?: number;
+}
+
+/**
+ * Validation warning for splits
+ */
+export interface ValidationWarning {
+  field: string;
+  message: string;
+  splitIndex?: number;
+}
+
+/**
+ * Result of split validation
+ */
+export interface ValidationResult {
+  errors: ValidationError[];
+  warnings: ValidationWarning[];
+}
