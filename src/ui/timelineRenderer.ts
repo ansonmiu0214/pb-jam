@@ -24,6 +24,9 @@ interface CanvasConfig {
     text: string;
     dragHighlight: string;
     insertionLine: string;
+    elevationUphill: string;
+    elevationDownhill: string;
+    elevationFlat: string;
   };
 }
 
@@ -59,6 +62,9 @@ const DEFAULT_CONFIG: CanvasConfig = {
     text: '#ffffff',
     dragHighlight: '#ff6b35',
     insertionLine: '#ff6b35',
+    elevationUphill: '#ff4444', // Red for uphill
+    elevationDownhill: '#44aa44', // Green for downhill
+    elevationFlat: '#888888', // Gray for flat
   },
 };
 
@@ -120,11 +126,17 @@ export function renderTimelineWithDragState(
     height: canvasHeight - finalConfig.margin.top - finalConfig.margin.bottom,
   };
 
+  // Draw distance axes (km and miles) to the left of the time axis
+  drawDistanceAxes(ctx, drawArea, data, finalConfig, totalDuration);
+
   // Draw timeline axis
   drawTimelineAxis(ctx, drawArea, data, finalConfig, totalDuration);
 
   // Draw race splits
   drawRaceSplits(ctx, drawArea, data, finalConfig, totalDuration);
+
+  // Draw elevation legend
+  drawElevationLegend(ctx, drawArea, finalConfig);
 
   // Draw song tracks if available and return track rectangles
   let trackRectangles: TrackRectangle[] = [];
@@ -138,6 +150,136 @@ export function renderTimelineWithDragState(
   }
 
   return trackRectangles;
+}
+
+/**
+ * Draw distance axes (km and miles) to the left of the time axis
+ */
+function drawDistanceAxes(
+  ctx: CanvasRenderingContext2D,
+  drawArea: { x: number; y: number; width: number; height: number },
+  data: TimelineData,
+  config: CanvasConfig,
+  totalDuration: number
+): void {
+  if (data.totalDistance <= 0 || data.splits.length === 0) return;
+
+  const unit = data.unit || 'km';
+  
+  // Determine conversion: if data is in miles, we need to show both km and miles
+  // If data is in km, we still show both for reference
+  const totalDistanceInKm = unit === 'mi' ? data.totalDistance * 1.60934 : data.totalDistance;
+  const totalDistanceInMi = unit === 'km' ? data.totalDistance * 0.621371 : data.totalDistance;
+
+  // Build cumulative distance -> time mapping from splits (in their native unit)
+  let cumulativeDist = 0;
+  let cumulativeTime = 0;
+  const distanceToTimeMap = new Map<number, number>();
+  distanceToTimeMap.set(0, 0);
+
+  data.splits.forEach((split) => {
+    cumulativeDist += split.distance;
+    cumulativeTime += split.targetTime;
+    distanceToTimeMap.set(cumulativeDist, cumulativeTime);
+  });
+
+  ctx.strokeStyle = config.colors.splitBorder;
+  ctx.lineWidth = 2;
+  ctx.fillStyle = config.colors.text;
+  ctx.font = 'bold 11px Arial';
+
+  // Axis positions: to the left of the time axis
+  // Time axis is at drawArea.x + 50, so place km and miles axes to the left
+  const kmAxisX = drawArea.x + 8;
+  const milesAxisX = drawArea.x + 28;
+
+  // Draw axis lines
+  ctx.beginPath();
+  ctx.moveTo(kmAxisX, drawArea.y);
+  ctx.lineTo(kmAxisX, drawArea.y + drawArea.height);
+  ctx.stroke();
+
+  ctx.beginPath();
+  ctx.moveTo(milesAxisX, drawArea.y);
+  ctx.lineTo(milesAxisX, drawArea.y + drawArea.height);
+  ctx.stroke();
+
+  // Draw axis labels at the top
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'bottom';
+  ctx.font = 'bold 10px Arial';
+  ctx.fillText('km', kmAxisX, drawArea.y - 5);
+  ctx.fillText('mi', milesAxisX, drawArea.y - 5);
+
+  // Draw tick marks and labels
+  ctx.lineWidth = 1;
+  ctx.font = '9px Arial';
+  ctx.textBaseline = 'middle';
+
+  // Draw KM axis markers (always every 1 km)
+  for (let kmDistance = 0; kmDistance <= totalDistanceInKm; kmDistance += 1) {
+    // Convert km distance back to race unit to find the time
+    const distanceInRaceUnit = unit === 'mi' ? kmDistance / 1.60934 : kmDistance;
+    const time = distanceToTimeMap.get(Math.round(distanceInRaceUnit * 10) / 10) || 
+                 interpolateTime(distanceInRaceUnit, data.splits);
+    
+    if (time >= 0 && time <= totalDuration) {
+      const y = drawArea.y + (time / totalDuration) * drawArea.height;
+
+      // KM tick mark and label
+      ctx.strokeStyle = config.colors.splitBorder;
+      ctx.beginPath();
+      ctx.moveTo(kmAxisX - 3, y);
+      ctx.lineTo(kmAxisX + 3, y);
+      ctx.stroke();
+
+      ctx.fillStyle = config.colors.text;
+      ctx.textAlign = 'right';
+      ctx.fillText(kmDistance.toFixed(1), kmAxisX - 5, y);
+    }
+  }
+
+  // Draw miles axis markers (always every 1 mile)
+  for (let miDistance = 0; miDistance <= totalDistanceInMi; miDistance += 1) {
+    // Convert miles distance back to race unit to find the time
+    const distanceInRaceUnit = unit === 'km' ? miDistance * 1.60934 : miDistance;
+    const time = distanceToTimeMap.get(Math.round(distanceInRaceUnit * 10) / 10) || 
+                 interpolateTime(distanceInRaceUnit, data.splits);
+    
+    if (time >= 0 && time <= totalDuration) {
+      const y = drawArea.y + (time / totalDuration) * drawArea.height;
+
+      // Miles tick mark and label
+      ctx.strokeStyle = config.colors.splitBorder;
+      ctx.beginPath();
+      ctx.moveTo(milesAxisX - 3, y);
+      ctx.lineTo(milesAxisX + 3, y);
+      ctx.stroke();
+
+      ctx.fillStyle = config.colors.text;
+      ctx.textAlign = 'right';
+      ctx.fillText(miDistance.toFixed(2), milesAxisX - 5, y);
+    }
+  }
+}
+
+/**
+ * Interpolate time for a given distance using split data
+ */
+function interpolateTime(distance: number, splits: Split[]): number {
+  let cumulativeDistance = 0;
+  let cumulativeTime = 0;
+
+  for (const split of splits) {
+    if (distance <= cumulativeDistance + split.distance) {
+      const fraction = (distance - cumulativeDistance) / split.distance;
+      return cumulativeTime + fraction * split.targetTime;
+    }
+    cumulativeDistance += split.distance;
+    cumulativeTime += split.targetTime;
+  }
+
+  return cumulativeTime;
 }
 
 /**
@@ -180,9 +322,11 @@ function drawTimelineAxis(
     ctx.stroke();
 
     // Time label (to the left of the axis)
-    const minutes = Math.floor(time / 60);
-    const seconds = time % 60;
-    const label = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+    const hours = Math.floor(time / 3600);
+    const minutes = Math.floor((time % 3600) / 60);
+    const label = hours > 0 
+      ? `${hours}:${minutes.toString().padStart(2, '0')}`
+      : `0:${minutes.toString().padStart(2, '0')}`;
     ctx.fillText(label, timelineX - 10, y);
   }
 }
@@ -200,6 +344,7 @@ function drawRaceSplits(
   let currentTime = 0;
   const splitX = drawArea.x + 60; // Start after time axis and labels
   const splitWidth = 120; // Fixed width for split rectangles
+  const elevationBarWidth = 8; // Width of elevation indicator bar
 
   data.splits.forEach((split, _index) => {
     const splitHeight = (split.targetTime / totalDuration) * drawArea.height;
@@ -212,6 +357,25 @@ function drawRaceSplits(
     ctx.strokeStyle = config.colors.splitBorder;
     ctx.lineWidth = 1;
     ctx.strokeRect(splitX, y, splitWidth, splitHeight);
+
+    // Draw elevation indicator bar on the left side of split
+    const elevationBarX = splitX - elevationBarWidth - 2;
+    const elevation = split.elevation || 0;
+    let elevationColor = config.colors.elevationFlat;
+    
+    if (elevation > 0) {
+      elevationColor = config.colors.elevationUphill; // Red for uphill
+    } else if (elevation < 0) {
+      elevationColor = config.colors.elevationDownhill; // Green for downhill
+    }
+    
+    ctx.fillStyle = elevationColor;
+    ctx.fillRect(elevationBarX, y, elevationBarWidth, splitHeight);
+    
+    // Draw elevation bar border
+    ctx.strokeStyle = config.colors.splitBorder;
+    ctx.lineWidth = 1;
+    ctx.strokeRect(elevationBarX, y, elevationBarWidth, splitHeight);
 
     // Draw split label
     ctx.fillStyle = config.colors.text;
@@ -232,6 +396,14 @@ function drawRaceSplits(
       const minutes = Math.floor(split.targetTime / 60);
       const seconds = split.targetTime % 60;
       ctx.fillText(`${minutes}:${seconds.toString().padStart(2, '0')}`, centerX, centerY + 8);
+      
+      // Elevation label (if there's space)
+      if (splitHeight > 50 && elevation !== 0) {
+        ctx.font = '9px Arial';
+        ctx.fillStyle = elevationColor;
+        const elevationText = elevation > 0 ? `+${elevation}m` : `${elevation}m`;
+        ctx.fillText(elevationText, centerX, centerY + 20);
+      }
     }
 
     currentTime += split.targetTime;
@@ -319,22 +491,13 @@ function drawSongTracksWithDragState(
       // Draw track name at top of rectangle
       ctx.fillText(trackName, trackX + 4, y + 4);
       
-      // Draw artist name if there's enough height
+      // Draw BPM if there's enough height and BPM is available
       if (adjustedHeight > 35) {
         ctx.font = '9px Arial';
         ctx.fillStyle = '#cccccc';
-        let artistName = track.artist;
+        const bpmText = track.bpm ? `${Math.round(track.bpm)} BPM` : 'BPM: N/A';
         
-        // Truncate artist name if needed
-        const artistWidth = ctx.measureText(artistName).width;
-        if (artistWidth > maxTextWidth) {
-          while (ctx.measureText(artistName + '...').width > maxTextWidth && artistName.length > 0) {
-            artistName = artistName.slice(0, -1);
-          }
-          artistName += '...';
-        }
-        
-        ctx.fillText(artistName, trackX + 4, y + 16);
+        ctx.fillText(bpmText, trackX + 4, y + 16);
       }
     }
 
@@ -433,30 +596,83 @@ export function createDragState(): DragState {
 
 
 /**
+ * Draw elevation legend
+ */
+function drawElevationLegend(
+  ctx: CanvasRenderingContext2D,
+  drawArea: { x: number; y: number; width: number; height: number },
+  config: CanvasConfig
+): void {
+  const legendX = drawArea.x + drawArea.width - 80;
+  const legendY = drawArea.y + 10;
+  const legendItemHeight = 16;
+  const legendBarWidth = 12;
+  const legendBarHeight = 12;
+
+  // Legend background
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+  ctx.fillRect(legendX - 5, legendY - 5, 75, 60);
+
+  ctx.strokeStyle = config.colors.splitBorder;
+  ctx.lineWidth = 1;
+  ctx.strokeRect(legendX - 5, legendY - 5, 75, 60);
+
+  // Legend title
+  ctx.fillStyle = config.colors.text;
+  ctx.font = 'bold 10px Arial';
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'top';
+  ctx.fillText('Elevation', legendX, legendY);
+
+  // Legend items
+  const legendItems = [
+    { color: config.colors.elevationUphill, label: 'Uphill', y: legendY + legendItemHeight },
+    { color: config.colors.elevationFlat, label: 'Flat', y: legendY + legendItemHeight * 2 },
+    { color: config.colors.elevationDownhill, label: 'Downhill', y: legendY + legendItemHeight * 3 },
+  ];
+
+  ctx.font = '9px Arial';
+  ctx.textBaseline = 'middle';
+
+  legendItems.forEach(item => {
+    // Draw color bar
+    ctx.fillStyle = item.color;
+    ctx.fillRect(legendX, item.y, legendBarWidth, legendBarHeight);
+    
+    ctx.strokeStyle = config.colors.splitBorder;
+    ctx.strokeRect(legendX, item.y, legendBarWidth, legendBarHeight);
+    
+    // Draw label
+    ctx.fillStyle = config.colors.text;
+    ctx.fillText(item.label, legendX + legendBarWidth + 5, item.y + legendBarHeight / 2);
+  });
+}
+
+/**
  * Create mock data for testing
  */
 export function createMockTimelineData(): TimelineData {
   const splits: Split[] = [
-    { distance: 5, targetTime: 1500, pace: 5 }, // 25 minutes, 5 min/km
-    { distance: 5, targetTime: 1440, pace: 4.8 }, // 24 minutes, 4.8 min/km
-    { distance: 5, targetTime: 1380, pace: 4.6 }, // 23 minutes, 4.6 min/km
-    { distance: 5, targetTime: 1320, pace: 4.4 }, // 22 minutes, 4.4 min/km
-    { distance: 2.2, targetTime: 600, pace: 4.5 }, // 10 minutes, ~4.5 min/km
+    { distance: 5, targetTime: 1500, pace: 5, elevation: 50 }, // 25 minutes, 5 min/km, uphill
+    { distance: 5, targetTime: 1440, pace: 4.8, elevation: 0 }, // 24 minutes, 4.8 min/km, flat
+    { distance: 5, targetTime: 1380, pace: 4.6, elevation: -30 }, // 23 minutes, 4.6 min/km, downhill
+    { distance: 5, targetTime: 1320, pace: 4.4, elevation: 25 }, // 22 minutes, 4.4 min/km, uphill
+    { distance: 2.2, targetTime: 600, pace: 4.5, elevation: -10 }, // 10 minutes, ~4.5 min/km, slight downhill
   ];
 
   const tracks: SpotifyTrack[] = [
-    { id: '1', name: 'Eye of the Tiger', artist: 'Survivor', durationMs: 246000, uri: 'spotify:track:1' },
-    { id: '2', name: 'Pump It Up', artist: 'Elvis Costello', durationMs: 198000, uri: 'spotify:track:2' },
-    { id: '3', name: "Don't Stop Me Now", artist: 'Queen', durationMs: 219000, uri: 'spotify:track:3' },
-    { id: '4', name: 'Thunderstruck', artist: 'AC/DC', durationMs: 292000, uri: 'spotify:track:4' },
-    { id: '5', name: 'Lose Yourself', artist: 'Eminem', durationMs: 326000, uri: 'spotify:track:5' },
-    { id: '6', name: 'We Will Rock You', artist: 'Queen', durationMs: 122000, uri: 'spotify:track:6' },
-    { id: '7', name: 'Another One Bites the Dust', artist: 'Queen', durationMs: 215000, uri: 'spotify:track:7' },
-    { id: '8', name: 'Born to Run', artist: 'Bruce Springsteen', durationMs: 270000, uri: 'spotify:track:8' },
-    { id: '9', name: 'Push It', artist: 'Salt-N-Pepa', durationMs: 267000, uri: 'spotify:track:9' },
-    { id: '10', name: 'Gonna Fly Now', artist: 'Bill Conti', durationMs: 177000, uri: 'spotify:track:10' },
-    { id: '11', name: 'Hearts on Fire', artist: 'John Caffery', durationMs: 240000, uri: 'spotify:track:11' },
-    { id: '12', name: 'Final Countdown', artist: 'Europe', durationMs: 312000, uri: 'spotify:track:12' },
+    { id: '1', name: 'Eye of the Tiger', artist: 'Survivor', durationMs: 246000, uri: 'spotify:track:1', bpm: 109 },
+    { id: '2', name: 'Pump It Up', artist: 'Elvis Costello', durationMs: 198000, uri: 'spotify:track:2', bpm: 142 },
+    { id: '3', name: "Don't Stop Me Now", artist: 'Queen', durationMs: 219000, uri: 'spotify:track:3', bpm: 156 },
+    { id: '4', name: 'Thunderstruck', artist: 'AC/DC', durationMs: 292000, uri: 'spotify:track:4', bpm: 133 },
+    { id: '5', name: 'Lose Yourself', artist: 'Eminem', durationMs: 326000, uri: 'spotify:track:5', bpm: 86 },
+    { id: '6', name: 'We Will Rock You', artist: 'Queen', durationMs: 122000, uri: 'spotify:track:6', bpm: 114 },
+    { id: '7', name: 'Another One Bites the Dust', artist: 'Queen', durationMs: 215000, uri: 'spotify:track:7', bpm: 110 },
+    { id: '8', name: 'Born to Run', artist: 'Bruce Springsteen', durationMs: 270000, uri: 'spotify:track:8', bpm: 147 },
+    { id: '9', name: 'Push It', artist: 'Salt-N-Pepa', durationMs: 267000, uri: 'spotify:track:9', bpm: 126 },
+    { id: '10', name: 'Gonna Fly Now', artist: 'Bill Conti', durationMs: 177000, uri: 'spotify:track:10', bpm: 120 },
+    { id: '11', name: 'Hearts on Fire', artist: 'John Caffery', durationMs: 240000, uri: 'spotify:track:11', bpm: 132 },
+    { id: '12', name: 'Final Countdown', artist: 'Europe', durationMs: 312000, uri: 'spotify:track:12', bpm: 118 },
   ];
 
   const totalTime = splits.reduce((sum, split) => sum + split.targetTime, 0);

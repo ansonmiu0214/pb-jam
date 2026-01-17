@@ -9,6 +9,8 @@ import {
   IconButton,
   Menu,
   MenuItem,
+  Switch,
+  FormControlLabel,
 } from '@mui/material';
 import {
   AccountCircle as AccountCircleIcon,
@@ -23,6 +25,7 @@ import {
   onUserChange,
 } from '../services/userService';
 import { signOut as firebaseSignOut } from '../services/firebaseService';
+import { useUnit } from '../contexts/UnitContext';
 import type { User, PacePlan, SpotifyTrack, Race } from '../models/types';
 
 export const MainApp: React.FC = () => {
@@ -32,6 +35,7 @@ export const MainApp: React.FC = () => {
   const [selectedRace, setSelectedRace] = useState<Race | null>(null);
   const [selectedTracks, setSelectedTracks] = useState<SpotifyTrack[]>([]);
   const pacePlanSectionRef = useRef<PacePlanSectionHandle>(null);
+  const { unit, toggleUnit } = useUnit();
 
   useEffect(() => {
     // Set initial user
@@ -90,6 +94,27 @@ export const MainApp: React.FC = () => {
           </Typography>
           
           <Box sx={{ display: 'flex', alignItems: 'center' }}>
+            <FormControlLabel
+              control={
+                <Switch
+                  checked={unit === 'mi'}
+                  onChange={toggleUnit}
+                  color="default"
+                  size="small"
+                />
+              }
+              label={unit === 'km' ? 'km' : 'mi'}
+              labelPlacement="start"
+              sx={{ 
+                mr: 2, 
+                color: 'inherit',
+                '& .MuiFormControlLabel-label': { 
+                  fontWeight: 'bold',
+                  minWidth: '24px',
+                  textAlign: 'center'
+                }
+              }}
+            />
             <Typography variant="body2" sx={{ mr: 1 }}>
               {userDisplay}
             </Typography>
@@ -124,7 +149,7 @@ export const MainApp: React.FC = () => {
           <Grid item xs={12} md={6}>
             <RaceSection onRaceCreated={handleRaceCreated} onRaceDeleted={handleRaceDeleted} />
           </Grid>
-          <Grid item xs={12} md={6}>
+          <Grid item xs={12}>
             <PacePlanSection 
               ref={pacePlanSectionRef} 
               onPacePlanSelect={setSelectedPacePlan} 

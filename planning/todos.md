@@ -174,3 +174,49 @@ This todo.md is a thorough checklist to guide your implementation of the Spotify
 ---
 
 **Tip:** Tick off each step as you go to ensure a safe incremental build of the MVP workflow. Once all Tier 1 tasks are complete, you can move to Tier 2 enhancements (splits editing, validation, elevation, tags, tooltips, undo/redo).
+
+## Tier 2: Incremental Enhancements
+
+### Split Editing & Validation
+* [x] **Implement split editing UI (Prompt 8.1)**
+  * [x] Display splits as editable table with distance (km), target time, computed pace
+  * [x] Add split functionality with sensible defaults
+  * [x] Delete split functionality (protected against deleting last split)
+  * [x] Save/Cancel workflow for split modifications
+  * [x] Real-time pace calculation as distance/time changes
+  * [x] Support for MM:SS time input format and raw seconds
+  * [x] Comprehensive test coverage in PacePlanSection.test.tsx
+  * [x] Integration with updatePacePlanSplits function
+* [ ] **Core split validation logic (Prompt 8.2)**
+  * [ ] Implement validation rules (distance/time sums match race/pace plan)
+  * [ ] Return structured validation results (errors vs warnings)
+  * [ ] Minimum split distance validation (0.1 km)
+  * [ ] Do not wire to UI yet
+* [ ] **Merge & split helpers (Prompt 8.3)**
+  * [ ] mergeSplits(indexA, indexB) function
+  * [ ] splitSplit(index, strategy) function
+  * [ ] Wire helpers to split editing UI
+* [ ] **Enforce validation before save (Prompt 8.4)**
+  * [ ] Inline color-coded feedback (red for errors, amber for warnings)
+  * [ ] Disable save button when validation errors exist
+  * [ ] Error messages near affected splits
+
+### Elevation & Distance Visualization
+* [x] **Persist elevation data (Prompt 9.1)** - Elevation input fields added to split editing UI with backward compatibility
+* [x] **Render elevation on timeline (Prompt 9.2)** - Color-coded elevation visualization with legend and performance optimization
+* [ ] **Distance markers (Prompt 9.3)**
+
+### Undo/Redo System
+* [ ] **Undo/redo manager (Prompt 10.1)**
+* [ ] **Undo/redo for split editing (Prompt 10.2)**
+* [ ] **Undo/redo for playlist reordering (Prompt 10.3)**
+
+### Additional Enhancements
+* [ ] **Unified tooltip system (Prompt 11.1)**
+* [ ] **Song metadata tooltips (Prompt 11.2)**
+* [ ] **Playlist overflow indicators (Prompt 11.3)**
+* [ ] **Tags for races and pace plans (Prompt 12.1)**
+* [ ] **Tag filtering (Prompt 12.2)**
+* [ ] **Spotify API hardening (Prompts 13.1-13.2)**
+* [ ] **Accessibility & responsiveness (Prompts 14.1-14.2)**
+* [ ] **Firestore security hardening (Prompt 15.1)**

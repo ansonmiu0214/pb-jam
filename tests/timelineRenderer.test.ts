@@ -185,4 +185,41 @@ describe('Timeline Renderer', () => {
       }).toThrow('Could not get canvas 2D context');
     });
   });
+
+  describe('elevation visualization', () => {
+    it('should include elevation data in mock timeline data', () => {
+      const mockData = createMockTimelineData();
+      
+      expect(mockData.splits).toBeDefined();
+      expect(mockData.splits.length).toBeGreaterThan(0);
+      
+      // Check that some splits have elevation data
+      const splitsWithElevation = mockData.splits.filter(split => split.elevation !== undefined);
+      expect(splitsWithElevation.length).toBeGreaterThan(0);
+      
+      // Check for variety in elevation values (uphill, downhill, flat)
+      const elevations = mockData.splits.map(split => split.elevation || 0);
+      const hasUphill = elevations.some(e => e > 0);
+      const hasDownhill = elevations.some(e => e < 0);
+      const hasFlat = elevations.some(e => e === 0);
+      
+      expect(hasUphill).toBe(true);
+      expect(hasDownhill).toBe(true);
+      expect(hasFlat).toBe(true);
+    });
+    
+    it('should render elevation indicators without errors', () => {
+      const mockCanvas = new MockHTMLCanvasElement();
+      const mockData = createMockTimelineData();
+      const ctx = mockCanvas.getContext('2d') as MockCanvasRenderingContext2D;
+      
+      expect(() => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        renderTimeline(mockCanvas as any, mockData);
+      }).not.toThrow();
+      
+      // Verify that fillRect was called (for elevation bars and legend)
+      expect(ctx.fillRect).toHaveBeenCalled();
+    });
+  });
 });

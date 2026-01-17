@@ -223,6 +223,24 @@ describe('RaceManager - CRUD Operations', () => {
       expect(race).toHaveProperty('tags');
     });
 
+    it('should persist and retrieve raceDate correctly', async () => {
+      const userId = 'user-123';
+      const raceDate = new Date('2024-12-25');
+      
+      await createRace(userId, { title: 'Christmas Race', distance: 10, unit: 'km', raceDate });
+
+      const races = await fetchRaces(userId);
+
+      expect(races.length).toBeGreaterThan(0);
+      const race = races[0];
+      expect(race.raceDate).toBeDefined();
+      expect(race.raceDate).toBeInstanceOf(Date);
+      // Compare dates without time component
+      expect(race.raceDate?.getFullYear()).toBe(raceDate.getFullYear());
+      expect(race.raceDate?.getMonth()).toBe(raceDate.getMonth());
+      expect(race.raceDate?.getDate()).toBe(raceDate.getDate());
+    });
+
     it('should log the number of fetched races', async () => {
       const consoleSpy = vi.spyOn(console, 'log');
       const userId = 'user-123';

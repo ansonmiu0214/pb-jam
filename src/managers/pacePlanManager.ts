@@ -1,6 +1,6 @@
 // Pace plan management module
 import { db } from '../services/firebaseService';
-import { PacePlan, Split } from '../models/types';
+import { PacePlan, Split, ValidationResult, ValidationError, ValidationWarning } from '../models/types';
 import { getUserId } from '../services/userService';
 import {
   collection,
@@ -96,7 +96,13 @@ export async function fetchPacePlans(raceId: string): Promise<PacePlan[]> {
         raceId: data.raceId,
         title: data.title,
         targetTime: data.targetTime,
-        splits: data.splits || [],
+        splits: (data.splits || []).map((split: unknown) => {
+          const s = split as Partial<Split>;
+          return ({
+            ...s,
+            elevation: s.elevation ?? 0, // Default elevation to 0 for backward compatibility
+          } as Split);
+        }),
         spotifyPlaylistId: data.spotifyPlaylistId,
         tags: data.tags || [],
         createdAt: data.createdAt?.toDate?.(),
@@ -218,4 +224,178 @@ export function parseTimeToSeconds(timeString: string): number {
   }
   
   return 0; // Invalid format
+}
+
+/**
+ * Validate splits for a pace plan
+ * @param splits - Array of splits to validate
+ * @param raceDistance - Total race distance in km
+ * @param targetTime - Target time for the pace plan in seconds
+ * @returns ValidationResult with errors and warnings
+ */
+export function validateSplits(
+  splits: Split[],
+  raceDistance: number,
+  targetTime: number
+): ValidationResult {
+  const errors: ValidationError[] = [];
+  const warnings: ValidationWarning[] = [];
+
+  // Check for empty splits
+  if (splits.length === 0) {
+    errors.push({
+      field: 'splits',
+      message: 'At least one split is required',
+    });
+    return { errors, warnings };
+  }
+
+  // Validate individual splits
+  splits.forEach((split, index) => {
+    // Check minimum distance
+    if (split.distance < 0.1) {
+      errors.push({
+        field: 'distance',
+        message: 'Split distance must be at least 0.1 km',
+        splitIndex: index,
+      });
+    }
+
+    // Check for negative target time
+    if (split.targetTime <= 0) {
+      errors.push({
+        field: 'targetTime',
+        message: 'Split target time must be greater than 0',
+        splitIndex: index,
+      });
+    }
+
+    // Note: Elevation can be negative, so no validation needed
+  });
+
+  // Calculate totals
+  const totalDistance = splits.reduce((sum, split) => sum + split.distance, 0);
+  const totalTime = splits.reduce((sum, split) => sum + split.targetTime, 0);
+
+  // Check if total distance equals race distance (within small tolerance for floating point precision)
+  const distanceTolerance = 0.01; // 10 meters tolerance
+  if (Math.abs(totalDistance - raceDistance) > distanceTolerance) {
+    errors.push({
+      field: 'distance',
+      message: `Total split distance (${totalDistance.toFixed(2)} km) must equal race distance (${raceDistance.toFixed(2)} km)`,
+    });
+  }
+
+  // Check if total time equals target time
+  if (totalTime !== targetTime) {
+    errors.push({
+      field: 'targetTime',
+      message: `Total split time (${totalTime}s) must equal pace plan target time (${targetTime}s)`,
+    });
+  }
+
+  return { errors, warnings };
+}
+
+/**
+ * Check if splits are valid (no blocking errors)
+ * @param splits - Array of splits to validate
+ * @param raceDistance - Total race distance in km
+ * @param targetTime - Target time for the pace plan in seconds
+ * @returns True if valid (no errors), false if there are blocking errors
+ */
+export function areSplitsValid(
+  splits: Split[],
+  raceDistance: number,
+  targetTime: number
+): boolean {
+  const result = validateSplits(splits, raceDistance, targetTime);
+  return result.errors.length === 0;
+}
+
+/**
+ * Merge two splits into one
+ * @param splits - Array of splits
+ * @param indexA - Index of first split to merge
+ * @param indexB - Index of second split to merge
+ * @returns New split array with merged splits (no mutation)
+ */
+export function mergeSplits(splits: Split[], indexA: number, indexB: number): Split[] {
+  if (indexA < 0 || indexA >= splits.length || indexB < 0 || indexB >= splits.length) {
+    throw new Error('Invalid split indices for merge operation');
+  }
+
+  if (indexA === indexB) {
+    throw new Error('Cannot merge a split with itself');
+  }
+
+  // Ensure indexA is the smaller index for consistent behavior
+  const firstIndex = Math.min(indexA, indexB);
+  const secondIndex = Math.max(indexA, indexB);
+
+  const newSplits = [...splits];
+  const splitA = newSplits[firstIndex];
+  const splitB = newSplits[secondIndex];
+
+  // Create merged split with combined distance, time, and average elevation
+  const mergedSplit: Split = {
+    distance: splitA.distance + splitB.distance,
+    targetTime: splitA.targetTime + splitB.targetTime,
+    pace: 0, // Will be recalculated
+    elevation: splitA.elevation !== undefined && splitB.elevation !== undefined
+      ? Math.round((splitA.elevation + splitB.elevation) / 2)
+      : (splitA.elevation ?? splitB.elevation ?? 0),
+  };
+
+  // Recalculate pace for the merged split
+  mergedSplit.pace = calculatePace(mergedSplit.distance, mergedSplit.targetTime);
+
+  // Remove both splits and insert the merged one at the first position
+  newSplits.splice(secondIndex, 1); // Remove second split first (higher index)
+  newSplits.splice(firstIndex, 1); // Remove first split
+  newSplits.splice(firstIndex, 0, mergedSplit); // Insert merged split
+
+  return newSplits;
+}
+
+/**
+ * Split one split into two
+ * @param splits - Array of splits
+ * @param index - Index of split to divide
+ * @param strategy - Strategy for splitting ("even" divides distance and time equally)
+ * @returns New split array with split divided (no mutation)
+ */
+export function splitSplit(splits: Split[], index: number, strategy: 'even' = 'even'): Split[] {
+  if (index < 0 || index >= splits.length) {
+    throw new Error('Invalid split index for split operation');
+  }
+
+  const newSplits = [...splits];
+  const originalSplit = newSplits[index];
+
+  if (strategy === 'even') {
+    // Create two splits with half the distance and time each
+    const firstSplit: Split = {
+      distance: originalSplit.distance / 2,
+      targetTime: originalSplit.targetTime / 2,
+      pace: 0, // Will be recalculated
+      elevation: originalSplit.elevation || 0,
+    };
+
+    const secondSplit: Split = {
+      distance: originalSplit.distance / 2,
+      targetTime: originalSplit.targetTime / 2,
+      pace: 0, // Will be recalculated
+      elevation: originalSplit.elevation || 0,
+    };
+
+    // Recalculate pace for both new splits
+    firstSplit.pace = calculatePace(firstSplit.distance, firstSplit.targetTime);
+    secondSplit.pace = calculatePace(secondSplit.distance, secondSplit.targetTime);
+
+    // Replace the original split with the two new ones
+    newSplits.splice(index, 1, firstSplit, secondSplit);
+  }
+
+  return newSplits;
 }

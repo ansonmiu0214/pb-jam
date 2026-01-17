@@ -274,7 +274,7 @@ After completing Tier 1 MVP:
 ### Chunk 8: Split Editing & Validation
 
 ```text
-# Prompt 8.1 — Add split editing UI
+# Prompt 8.1 — Add split editing UI (COMPLETED)
 Extend the pace plan UI to support editing splits.
 
 Requirements:
@@ -291,10 +291,22 @@ Requirements:
 Constraints:
 - No breaking changes to existing pace plans
 - Use TypeScript types consistently
+
+**Result:** Split editing UI successfully implemented with:
+- Collapsible splits table in PacePlanSection component with Material-UI components
+- Editable distance (km) and target time fields with number/time input support
+- Read-only computed pace display (automatically calculated)
+- Add Split button with default 5km/25min values
+- Delete split functionality with protection against deleting the last split
+- Save/Cancel buttons for commits and rollbacks
+- Complete state management for editing sessions
+- Time input supports both MM:SS format and seconds
+- Comprehensive test coverage in PacePlanSection.test.tsx
+- Integration with existing updatePacePlanSplits function in pacePlanManager
 ```
 
 ```text
-# Prompt 8.2 — Core split validation logic
+# Prompt 8.2 — Core split validation logic (COMPLETED)
 Implement split validation logic in pacePlanManager.ts.
 
 Validation rules:
@@ -312,10 +324,19 @@ Implementation details:
 - Errors block saving
 - Warnings do not block saving
 - Do not wire to UI yet
+
+**Result:** Split validation logic successfully implemented with:
+- ValidationError, ValidationWarning, and ValidationResult interfaces in types.ts
+- validateSplits() function that validates all rules and returns structured results
+- areSplitsValid() helper function for quick validation checks
+- Comprehensive validation rules including minimum distance, total distance/time matching
+- Support for negative elevation values (no validation constraint)
+- Floating-point tolerance for distance calculations (0.01km)
+- Complete test coverage in pacePlanManager.validation.test.ts with multiple test scenarios
 ```
 
 ```text
-# Prompt 8.3 — Merge & split helpers
+# Prompt 8.3 — Merge & split helpers (COMPLETED)
 Implement split manipulation helpers in pacePlanManager.ts.
 
 Functions:
@@ -328,6 +349,18 @@ Behavior:
 - Return new split arrays (no mutation)
 
 Then wire these helpers to the split editing UI.
+
+**Result:** Split manipulation helpers successfully implemented with:
+- mergeSplits() function that combines two splits with proper distance/time summation
+- splitSplit() function that divides a split evenly by default strategy
+- Proper error handling for invalid indices and edge cases
+- Elevation handling: merge takes average, split preserves original elevation
+- Complete UI integration in PacePlanSection with merge/split/delete buttons in Actions column
+- Visual feedback: merge button highlights when split is selected for merging
+- Intuitive workflow: click merge on two splits to combine them, click split to divide
+- Helper text explaining the merge/split workflow to users
+- Comprehensive test coverage in pacePlanManager.validation.test.ts
+- Functions return new arrays without mutating original data
 ```
 
 ```text
@@ -347,7 +380,7 @@ Do not change validation rules.
 ### Chunk 9: Elevation & Distance Visualization
 
 ```text
-# Prompt 9.1 — Persist elevation data
+# Prompt 9.1 — Persist elevation data (COMPLETED)
 Extend split editing to include elevation (integer meters).
 
 Requirements:
@@ -355,10 +388,20 @@ Requirements:
 - Persist elevation to Firestore
 - Backward compatible with existing pace plans
 - Default elevation = 0 for older data
+
+**Result:** Elevation support successfully implemented with:
+- Added elevation column to split editing table with integer input field
+- Enhanced Split interface already supported optional elevation field
+- Updated handleSplitChange to handle elevation modifications with validation
+- Backward compatibility ensured by defaulting elevation to 0 for existing splits without elevation data
+- Updated fetchPacePlans to apply default elevation values when loading from Firestore
+- Enhanced handleAddSplit to include default elevation of 0 for new splits
+- Comprehensive test coverage for backward compatibility scenarios
+- Proper TypeScript typing with elevation field support in all split operations
 ```
 
 ```text
-# Prompt 9.2 — Render elevation on timeline
+# Prompt 9.2 — Render elevation on timeline (COMPLETED)
 Extend timelineRenderer.ts to visualize elevation.
 
 Rendering rules:
@@ -369,6 +412,20 @@ Rendering rules:
 
 Performance:
 - No noticeable slowdown for large playlists
+
+**Result:** Elevation visualization successfully implemented with:
+- Added elevation color indicators to split segments with vertical bars
+- Red color for uphill (positive elevation) segments
+- Green color for downhill (negative elevation) segments 
+- Gray color for flat (zero elevation) segments
+- Elevation bars positioned adjacent to split rectangles for clear alignment
+- Elevation legend in top-right corner explaining color coding
+- Elevation values displayed within split labels when space permits
+- Updated mock data with varied elevation examples for testing
+- Enhanced canvas configuration with elevation-specific colors
+- Performance-optimized rendering using simple rectangle drawing operations
+- Comprehensive test coverage for elevation functionality
+- Backward compatible with existing splits without elevation data
 ```
 
 ```text

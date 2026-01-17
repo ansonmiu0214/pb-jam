@@ -53,6 +53,7 @@ export interface SpotifyTrack {
   artist: string;
   durationMs: number;
   uri: string;
+  bpm?: number; // Beats per minute from Spotify audio features
 }
 
 /**
@@ -101,4 +102,30 @@ export interface User {
   email: string;
   displayName?: string;
   spotifyId?: string;
+}
+
+/**
+ * Validation error for splits
+ */
+export interface ValidationError {
+  field: string;
+  message: string;
+  splitIndex?: number;
+}
+
+/**
+ * Validation warning for splits
+ */
+export interface ValidationWarning {
+  field: string;
+  message: string;
+  splitIndex?: number;
+}
+
+/**
+ * Result of split validation
+ */
+export interface ValidationResult {
+  errors: ValidationError[];
+  warnings: ValidationWarning[];
 }
